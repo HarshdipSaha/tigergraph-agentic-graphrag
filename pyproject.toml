@@ -1,0 +1,13 @@
+[project]
+name = "agrag"
+version = "0.1.0"
+description = "Investigation Certificates for Agentic GraphRAG on TigerGraph"
+requires-python = ">=3.12"
+
+[tool.setuptools.packages.find]
+include = ["agrag*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["integration: needs a live TigerGraph (set TG_HOST)"]
