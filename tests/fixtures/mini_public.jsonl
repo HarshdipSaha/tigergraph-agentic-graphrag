@@ -1,0 +1,5 @@
+{"qid": "mini-001", "question": "How many nations competed in Sailing at the 2016 Summer Olympics – Women's RS:X?", "qtype": "lookup", "gold_doc_ids": ["Q7"], "answer": ["26"]}
+{"qid": "mini-002", "question": "Who won the gold medal in the event held at Alpensia Biathlon Centre on 11 February 2018?", "qtype": "multi_hop", "gold_doc_ids": ["Q2"], "answer": ["Arnd Peiffer"]}
+{"qid": "mini-003", "question": "Who won the gold medal in the women's sprint biathlon event at the Winter Olympics held immediately before 2018?", "qtype": "temporal", "gold_doc_ids": ["Q1", "Q4"], "answer": ["Anastasiya Kuzmina"]}
+{"qid": "mini-004", "question": "According to the provided corpus, how many biathlon events at the 2018 Winter Olympics had more than 73 competitors?", "qtype": "aggregation", "gold_doc_ids": ["Q1", "Q2", "Q3", "Q5"], "answer": ["2"]}
+{"qid": "mini-005", "question": "According to the provided corpus, which biathlon event at the 2018 Winter Olympics had the highest number of competitors?", "qtype": "superlative", "gold_doc_ids": ["Q1", "Q2", "Q3", "Q5"], "answer": ["Biathlon at the 2018 Winter Olympics – Women's sprint"]}
