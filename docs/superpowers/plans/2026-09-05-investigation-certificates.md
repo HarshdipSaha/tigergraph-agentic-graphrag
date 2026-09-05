@@ -6,7 +6,7 @@
 
 **Architecture:** A pure-Python core (infobox parser, question router, deterministic tools, certificate model, scoring) is built and tested first against a `LocalBackend` that implements the same `GraphBackend` protocol as the real `TigerGraphBackend`. The council-mandated reconciliation pass runs on the local backend before TigerGraph exists, then again against TigerGraph after loading. Pipelines take an injected backend + LLM so every pipeline is unit-testable with fakes; only `tests/integration/` talks to Savanna.
 
-**Tech Stack:** Python 3.12, `pyTigerGraph` (TigerGraph Savanna, GSQL, vector attributes), `groq` SDK (default model `llama-3.3-70b-versatile`, free tier — no card required at console.groq.com/keys) with an `anthropic` SDK path also implemented for anyone who prefers it, `sentence-transformers` (`all-MiniLM-L6-v2`, 384-dim, already installed), `pydantic` v2, `pytest`, `streamlit` (already installed), `numpy`.
+**Tech Stack:** Python 3.12, `pyTigerGraph` (TigerGraph Savanna, GSQL, vector attributes), `groq` SDK (default model `openai/gpt-oss-120b`, free tier — no card required at console.groq.com/keys) with an `anthropic` SDK path also implemented for anyone who prefers it, `sentence-transformers` (`all-MiniLM-L6-v2`, 384-dim, already installed), `pydantic` v2, `pytest`, `streamlit` (already installed), `numpy`.
 
 **Spec:** `docs/idea-spec.md` (system design §4, build plan §5, mandatory reconciliation §6). **Dataset facts:** `docs/hackathon-brief.md` §7.
 
@@ -190,7 +190,7 @@ TG_PASSWORD=
 AGRAG_LLM_PROVIDER=groq
 GROQ_API_KEY=
 ANTHROPIC_API_KEY=
-AGRAG_MODEL=llama-3.3-70b-versatile
+AGRAG_MODEL=openai/gpt-oss-120b
 AGRAG_MAX_TOKENS=1024
 
 # Embeddings
@@ -1472,7 +1472,7 @@ class Settings:
     tg_password: str = os.getenv("TG_PASSWORD", "")
     llm_provider: str = os.getenv("AGRAG_LLM_PROVIDER", "groq")   # "groq" (free) or "anthropic"
     groq_api_key: str = os.getenv("GROQ_API_KEY", "")
-    model: str = os.getenv("AGRAG_MODEL", "llama-3.3-70b-versatile")
+    model: str = os.getenv("AGRAG_MODEL", "openai/gpt-oss-120b")
     max_tokens: int = int(os.getenv("AGRAG_MAX_TOKENS", "1024"))
     embed_model: str = os.getenv("AGRAG_EMBED_MODEL", "all-MiniLM-L6-v2")
 
@@ -1484,10 +1484,14 @@ settings = Settings()
 ```python
 from __future__ import annotations
 
+import re
+import time
 from dataclasses import dataclass
 from typing import Protocol
 
 from agrag.config import settings
+
+_RETRY_AFTER_RE = re.compile(r"try again in ([\d.]+)s", re.I)
 
 
 @dataclass(frozen=True)
@@ -1520,23 +1524,40 @@ class FakeLLM:
 
 class GroqLLM:
     """Thin wrapper over the Groq chat-completions API (OpenAI-compatible). Free tier, no card required.
-    Default model is settings.model (llama-3.3-70b-versatile); sign up at https://console.groq.com/keys."""
+    Default model is settings.model; sign up at https://console.groq.com/keys.
 
-    def __init__(self, model: str | None = None, max_tokens: int | None = None):
+    The free tier caps tokens-per-minute per model (observed: 8,000 TPM for openai/gpt-oss-120b), which a
+    handful of large-context requests can exceed within seconds. Groq's 429 body names the exact wait
+    ("Please try again in 3.89s"); complete() honors that instead of the SDK's default short retry backoff,
+    which is too short for a per-minute cap and would otherwise raise RateLimitError and abort a whole eval run."""
+
+    def __init__(self, model: str | None = None, max_tokens: int | None = None, max_retries: int = 8):
         from groq import Groq  # lazy import so tests never need the SDK configured
 
-        self._client = Groq(api_key=settings.groq_api_key or None)
+        self._client = Groq(api_key=settings.groq_api_key or None, max_retries=0)  # we retry ourselves, deliberately
         self.model = model or settings.model
         self.max_tokens = max_tokens or settings.max_tokens
+        self.max_retries = max_retries
 
     def complete(self, system: str, user: str) -> LLMResponse:
-        resp = self._client.chat.completions.create(
-            model=self.model,
-            max_tokens=self.max_tokens,
-            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-        )
-        text = (resp.choices[0].message.content or "").strip()
-        return LLMResponse(text=text, input_tokens=resp.usage.prompt_tokens, output_tokens=resp.usage.completion_tokens)
+        import groq
+
+        for attempt in range(self.max_retries + 1):
+            try:
+                resp = self._client.chat.completions.create(
+                    model=self.model,
+                    max_tokens=self.max_tokens,
+                    messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+                )
+                text = (resp.choices[0].message.content or "").strip()
+                return LLMResponse(text=text, input_tokens=resp.usage.prompt_tokens, output_tokens=resp.usage.completion_tokens)
+            except groq.RateLimitError as e:
+                if attempt == self.max_retries:
+                    raise
+                m = _RETRY_AFTER_RE.search(str(e))
+                wait = float(m.group(1)) + 0.5 if m else 5.0 * (attempt + 1)
+                time.sleep(wait)
+        raise RuntimeError("unreachable")  # loop always returns or raises
 
 
 class AnthropicLLM:
@@ -3021,11 +3042,13 @@ class TigerGraphBackend:
         return self._events("events_by_venue", {"venue": venue, "games": games})
 
     def prev_event(self, doc_id: str) -> Optional[EventRecord]:
-        evs = self._events("prev_event", {"ev": doc_id}, key="P")
+        # VERTEX<Event> params take a 1-tuple; a plain string is deprecated and silently falls back
+        # to a slower GET-based retry on every call (confirmed against a live workspace).
+        evs = self._events("prev_event", {"ev": (doc_id,)}, key="P")
         return evs[0] if evs else None
 
     def neighborhood(self, doc_id: str) -> Optional[Neighborhood]:
-        res = self.conn.runInstalledQuery("event_neighborhood", {"ev": doc_id})
+        res = self.conn.runInstalledQuery("event_neighborhood", {"ev": (doc_id,)})
         get = lambda k: next((b[k] for b in res if k in b), [])
         start = get("Start")
         if not start:
@@ -3077,6 +3100,9 @@ class TigerGraphBackend:
 import os
 
 import pytest
+from dotenv import load_dotenv
+
+load_dotenv()  # populate os.environ from .env before the skip check below reads it
 
 pytestmark = pytest.mark.integration
 if not os.getenv("TG_HOST"):

@@ -17,7 +17,7 @@ class Settings:
     tg_password: str = os.getenv("TG_PASSWORD", "")
     llm_provider: str = os.getenv("AGRAG_LLM_PROVIDER", "groq")   # "groq" (free) or "anthropic"
     groq_api_key: str = os.getenv("GROQ_API_KEY", "")
-    model: str = os.getenv("AGRAG_MODEL", "llama-3.3-70b-versatile")
+    model: str = os.getenv("AGRAG_MODEL", "openai/gpt-oss-120b")
     max_tokens: int = int(os.getenv("AGRAG_MAX_TOKENS", "1024"))
     embed_model: str = os.getenv("AGRAG_EMBED_MODEL", "all-MiniLM-L6-v2")
 
