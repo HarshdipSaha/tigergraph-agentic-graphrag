@@ -1,0 +1,49 @@
+USE GRAPH OlympicsRAG
+
+CREATE OR REPLACE QUERY events_by_sport_games(STRING sport, STRING games) FOR GRAPH OlympicsRAG {
+  Start = {Event.*};
+  R = SELECT e FROM Start:e WHERE lower(e.sport) == lower(sport) AND e.games == games;
+  PRINT R;
+}
+
+CREATE OR REPLACE QUERY events_at_games(STRING games) FOR GRAPH OlympicsRAG {
+  Start = {Event.*};
+  R = SELECT e FROM Start:e WHERE e.games == games;
+  PRINT R;
+}
+
+CREATE OR REPLACE QUERY event_by_title(STRING title) FOR GRAPH OlympicsRAG {
+  Start = {Event.*};
+  R = SELECT e FROM Start:e WHERE e.title == title;
+  PRINT R;
+}
+
+CREATE OR REPLACE QUERY events_by_venue(STRING venue, STRING games) FOR GRAPH OlympicsRAG {
+  Start = {Event.*};
+  R = SELECT e FROM Start:e WHERE lower(e.venue) == lower(venue) AND e.games == games;
+  PRINT R;
+}
+
+CREATE OR REPLACE QUERY prev_event(VERTEX<Event> ev) FOR GRAPH OlympicsRAG {
+  Start = {ev};
+  P = SELECT t FROM Start:s -(PREV:x)- Event:t;
+  PRINT P;
+}
+
+CREATE OR REPLACE QUERY event_neighborhood(VERTEX<Event> ev) FOR GRAPH OlympicsRAG {
+  Start = {ev};
+  P = SELECT t FROM Start:s -(PREV:x)- Event:t;
+  N = SELECT t FROM Start:s -(NEXT:x)- Event:t;
+  V = SELECT v FROM Start:s -(HELD_AT:x)- Venue:v;
+  SameVenue = SELECT t FROM V:v -(HOSTS:x)- Event:t;
+  PRINT Start, P, N, SameVenue;
+}
+
+CREATE OR REPLACE QUERY chunk_search(LIST<float> query_vector, INT k) FOR GRAPH OlympicsRAG SYNTAX v3 {
+  MapAccum<Vertex, Float> @@distances;
+  v = vectorSearch({Chunk.emb}, query_vector, k, {distance_map: @@distances});
+  PRINT v;
+  PRINT @@distances;
+}
+
+INSTALL QUERY ALL
