@@ -1,0 +1,149 @@
+"""Agentic GraphRAG orchestrator.
+
+Route -> dispatch class-appropriate tool -> evaluate evidence -> LLM only for recovery or
+disambiguation -> emit an Investigation Certificate. See docs/idea-spec.md §4.
+"""
+from __future__ import annotations
+
+import re
+from typing import Optional
+
+from agrag.backend import GraphBackend
+from agrag.certificate import Certificate, Step, TokenUsage
+from agrag.infobox import EventRecord
+from agrag.llm import LLM
+from agrag.pipelines.base import PipelineResult, Timer, clean_answer, event_facts
+from agrag.pipelines.graphrag import GraphRagPipeline
+from agrag.questions import Question
+from agrag.router import ParsedQuestion, route
+from agrag.tools import (
+    ToolResult,
+    aggregation_scan,
+    lookup_nations,
+    resolve_multi_hop,
+    superlative_scan,
+    temporal_chain,
+)
+
+DISAMBIGUATE_SYSTEM = (
+    "You are given a question and a numbered list of candidate Olympic events with their infobox facts. "
+    "Reply with the doc id (e.g. Q123) of the single event that matches the question's venue and date. "
+    "Reply with the doc id only."
+)
+EXTRACT_SYSTEM = (
+    "Extract the total number of competitors in this Olympic event from the text. "
+    "Reply with an integer only, or UNKNOWN if the text does not state it."
+)
+RETRIEVAL_MODE = {"lookup": "exact_match", "multi_hop": "venue_date_traversal", "temporal": "hop_chain",
+                  "aggregation": "structural_scan", "superlative": "structural_scan"}
+
+
+class AgenticPipeline:
+    name = "agentic"
+
+    def __init__(self, backend: GraphBackend, llm: LLM):
+        self.b, self.llm = backend, llm
+        self._fallback = GraphRagPipeline(backend, llm)
+
+    # ---------- LLM helpers (the only place tokens are spent) ----------
+    def _disambiguate(self, q: Question, cands: list[EventRecord]) -> tuple[Optional[EventRecord], Step]:
+        listing = "\n\n".join(f"{i+1}. doc {e.doc_id}\n{event_facts(e)}" for i, e in enumerate(cands))
+        with Timer() as t:
+            resp = self.llm.complete(DISAMBIGUATE_SYSTEM, f"Question: {q.question}\n\nCandidates:\n{listing}")
+        m = re.search(r"Q\d+", resp.text)
+        chosen = next((e for e in cands if m and e.doc_id == m.group(0)), None)
+        return chosen, Step(tool="llm_disambiguate", note=f"{len(cands)} candidates -> {chosen.doc_id if chosen else 'none'}",
+                            tokens=TokenUsage(input=resp.input_tokens, output=resp.output_tokens), latency_ms=t.ms)
+
+    def _extract_competitors(self, doc_id: str) -> tuple[Optional[int], Step]:
+        text = self.b.doc_text(doc_id)[:6000]
+        with Timer() as t:
+            resp = self.llm.complete(EXTRACT_SYSTEM, text)
+        m = re.search(r"\d+", resp.text)
+        n = int(m.group(0)) if m else None
+        return n, Step(tool="llm_extract_competitors", note=f"{doc_id} -> {n}",
+                       tokens=TokenUsage(input=resp.input_tokens, output=resp.output_tokens), latency_ms=t.ms)
+
+    # ---------- orchestration ----------
+    def answer(self, q: Question) -> PipelineResult:
+        pq = route(q.question)
+        if pq.template is None:
+            return self._unrouted(q, pq)
+        with Timer() as t:
+            steps: list[Step] = []
+            tokens = TokenUsage()
+            answer: Optional[str]
+            if pq.template == "lookup":
+                r = lookup_nations(self.b, pq)
+                answer, check = r.answer, ("pass" if r.answer else "fail")
+                steps.append(Step(tool=r.tool, note="; ".join(r.notes) or f"bound={r.structural_bound}"))
+            elif pq.template == "multi_hop":
+                r = resolve_multi_hop(self.b, pq)
+                steps.append(Step(tool=r.tool, note=f"{len(r.candidates)} candidates" + (" (relaxed venue match)" if r.fallback_used else "")))
+                answer, check = r.answer, "pass"
+                if r.needs_llm and r.candidates:
+                    chosen, step = self._disambiguate(q, r.candidates)
+                    steps.append(step)
+                    tokens = tokens + step.tokens
+                    answer = chosen.gold if chosen else None
+                    check = "pass_with_llm_recovery" if chosen else "fail"
+                    r.evidence = [chosen.doc_id] if chosen else r.evidence
+                elif r.fallback_used and answer:
+                    check = "pass_with_fallback"
+                elif answer is None:
+                    check = "fail"
+            elif pq.template == "temporal":
+                r = temporal_chain(self.b, pq)
+                steps.append(Step(tool=r.tool, note=f"hops={r.hops}" + ("; fallback" if r.fallback_used else "")))
+                answer = r.answer
+                check = "fail" if answer is None else ("pass_with_fallback" if r.fallback_used else "pass")
+            else:  # aggregation / superlative
+                scan = aggregation_scan if pq.template == "aggregation" else superlative_scan
+                r = scan(self.b, pq)   # regex recovery of missing competitor counts already applied inside
+                steps.append(Step(tool=r.tool, note=f"bound={r.structural_bound}; regex-recovered={list(r.recovered)}"))
+                check = "pass"
+                if r.unresolved:   # only docs where neither infobox nor regex gave a count reach the LLM
+                    for doc_id in list(r.unresolved):
+                        n, step = self._extract_competitors(doc_id)
+                        steps.append(step)
+                        tokens = tokens + step.tokens
+                        if n is not None:
+                            r.recovered[doc_id] = n
+                    r = self._rescan_with(r, pq)
+                    check = "pass_with_llm_recovery" if not r.unresolved else "fail"
+                answer = r.answer
+            stop_reason = "structural_bound_met" if check.startswith("pass") else "evidence_incomplete"
+        cert = Certificate(
+            qid=q.qid, qtype=q.qtype or pq.template, completeness_class=pq.completeness_class,
+            classification_confidence=pq.confidence, retrieval_mode=RETRIEVAL_MODE[pq.template], predicate=r.predicate,
+            structural_bound=r.structural_bound, evidence_set_size=len(r.evidence), completeness_check=check,
+            docs_inspected=list(r.evidence), steps=steps, tokens=tokens, latency_ms=t.ms, stop_reason=stop_reason,
+        )
+        return PipelineResult(qid=q.qid, pipeline=self.name, answer=answer, docs_retrieved=list(r.evidence),
+                              tokens=tokens, latency_ms=t.ms, trace=[s.model_dump() for s in steps], certificate=cert)
+
+    def _rescan_with(self, r: ToolResult, pq: ParsedQuestion) -> ToolResult:
+        """Recompute the exhaustive answer using r.recovered (which now includes LLM-extracted values)."""
+        recovered = dict(r.recovered)
+        events = r.candidates
+        def n_of(e: EventRecord) -> Optional[int]:
+            return e.competitors if e.competitors is not None else recovered.get(e.doc_id)
+        if pq.template == "aggregation":
+            r.answer = str(sum(1 for e in events if (n_of(e) or -1) > pq.slots["threshold"]))
+        else:
+            best = max((e for e in events if n_of(e) is not None), key=lambda e: n_of(e), default=None)
+            r.answer = best.title if best else None
+        r.unresolved = [e.doc_id for e in events if n_of(e) is None]
+        return r
+
+    def _unrouted(self, q: Question, pq: ParsedQuestion) -> PipelineResult:
+        base = self._fallback.answer(q)
+        cert = Certificate(
+            qid=q.qid, qtype=q.qtype or "unknown", completeness_class="unknown", classification_confidence="low",
+            retrieval_mode="graphrag_fallback", predicate={}, structural_bound=0, evidence_set_size=len(base.docs_retrieved),
+            completeness_check="unverified", docs_inspected=base.docs_retrieved,
+            steps=[Step(tool="graphrag_fallback", note="question did not match any template", tokens=base.tokens)],
+            tokens=base.tokens, latency_ms=base.latency_ms, stop_reason="fallback_single_pass",
+        )
+        return PipelineResult(qid=q.qid, pipeline=self.name, answer=base.answer, docs_retrieved=base.docs_retrieved,
+                              tokens=base.tokens, latency_ms=base.latency_ms, trace=base.trace, certificate=cert)
