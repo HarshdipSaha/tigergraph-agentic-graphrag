@@ -6,7 +6,7 @@
 
 **Architecture:** A pure-Python core (infobox parser, question router, deterministic tools, certificate model, scoring) is built and tested first against a `LocalBackend` that implements the same `GraphBackend` protocol as the real `TigerGraphBackend`. The council-mandated reconciliation pass runs on the local backend before TigerGraph exists, then again against TigerGraph after loading. Pipelines take an injected backend + LLM so every pipeline is unit-testable with fakes; only `tests/integration/` talks to Savanna.
 
-**Tech Stack:** Python 3.12, `pyTigerGraph` (TigerGraph Savanna, GSQL, vector attributes), `groq` SDK (default model `openai/gpt-oss-120b`, free tier — no card required at console.groq.com/keys) with an `anthropic` SDK path also implemented for anyone who prefers it, `sentence-transformers` (`all-MiniLM-L6-v2`, 384-dim, already installed), `pydantic` v2, `pytest`, `streamlit` (already installed), `numpy`.
+**Tech Stack:** Python 3.12, `pyTigerGraph` (TigerGraph Savanna, GSQL, vector attributes), `groq` SDK (default model `openai/gpt-oss-20b`, free tier — no card required at console.groq.com/keys) with an `anthropic` SDK path also implemented for anyone who prefers it, `sentence-transformers` (`all-MiniLM-L6-v2`, 384-dim, already installed), `pydantic` v2, `pytest`, `streamlit` (already installed), `numpy`.
 
 **Spec:** `docs/idea-spec.md` (system design §4, build plan §5, mandatory reconciliation §6). **Dataset facts:** `docs/hackathon-brief.md` §7.
 
@@ -190,7 +190,7 @@ TG_PASSWORD=
 AGRAG_LLM_PROVIDER=groq
 GROQ_API_KEY=
 ANTHROPIC_API_KEY=
-AGRAG_MODEL=openai/gpt-oss-120b
+AGRAG_MODEL=openai/gpt-oss-20b
 AGRAG_MAX_TOKENS=1024
 
 # Embeddings
@@ -1472,7 +1472,7 @@ class Settings:
     tg_password: str = os.getenv("TG_PASSWORD", "")
     llm_provider: str = os.getenv("AGRAG_LLM_PROVIDER", "groq")   # "groq" (free) or "anthropic"
     groq_api_key: str = os.getenv("GROQ_API_KEY", "")
-    model: str = os.getenv("AGRAG_MODEL", "openai/gpt-oss-120b")
+    model: str = os.getenv("AGRAG_MODEL", "openai/gpt-oss-20b")
     max_tokens: int = int(os.getenv("AGRAG_MAX_TOKENS", "1024"))
     embed_model: str = os.getenv("AGRAG_EMBED_MODEL", "all-MiniLM-L6-v2")
 
@@ -1526,7 +1526,7 @@ class GroqLLM:
     """Thin wrapper over the Groq chat-completions API (OpenAI-compatible). Free tier, no card required.
     Default model is settings.model; sign up at https://console.groq.com/keys.
 
-    The free tier caps tokens-per-minute per model (observed: 8,000 TPM for openai/gpt-oss-120b), which a
+    The free tier caps tokens-per-minute per model (observed: 8,000 TPM for openai/gpt-oss-20b), which a
     handful of large-context requests can exceed within seconds. Groq's 429 body names the exact wait
     ("Please try again in 3.89s"); complete() honors that instead of the SDK's default short retry backoff,
     which is too short for a per-minute cap and would otherwise raise RateLimitError and abort a whole eval run."""
