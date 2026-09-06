@@ -5,6 +5,7 @@ __pycache__/
 .venv/
 data/corpus.jsonl
 data/embed_cache.pkl
+data/.groq_key_state.json
 results/smoke.jsonl
 .playwright-mcp/
 *.egg-info/

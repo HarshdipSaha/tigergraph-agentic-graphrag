@@ -21,5 +21,11 @@ class Settings:
     max_tokens: int = int(os.getenv("AGRAG_MAX_TOKENS", "1024"))
     embed_model: str = os.getenv("AGRAG_EMBED_MODEL", "all-MiniLM-L6-v2")
 
+    @property
+    def groq_api_keys(self) -> list[str]:
+        """GROQ_API_KEY may hold several comma-separated keys (from separate free-tier accounts) so
+        GroqLLM can rotate off a key that hits its daily cap instead of blocking the whole run."""
+        return [k.strip() for k in self.groq_api_key.split(",") if k.strip()]
+
 
 settings = Settings()
