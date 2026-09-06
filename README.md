@@ -97,7 +97,19 @@ Every question class gets a certificate, not just counting questions — `existe
 
 Reconciliation ran twice, per `docs/idea-spec.md` §6: locally against the parsed corpus before any agent/orchestrator code existed (`data/reconciliation-local.json`), and again against the loaded TigerGraph graph after loading (`data/reconciliation-tigergraph.json`). Both are committed as evidence the completeness claim was validated, not assumed.
 
-<!-- RESULTS_TABLE_PLACEHOLDER -->
+## Results (live TigerGraph + live Groq, public set, n=100 per pipeline)
+
+| Pipeline | Accuracy | Avg tokens/answer | lookup | multi_hop | temporal | aggregation | superlative |
+|---|---|---|---|---|---|---|---|
+| RAG | 25% | 1,389 | 84% (16/19) | 11% (3/28) | 27% (6/22) | **0%** (0/21) | **0%** (0/10) |
+| GraphRAG | 43% | 2,203 | 89% (17/19) | 32% (9/28) | 77% (17/22) | **0%** (0/21) | **0%** (0/10) |
+| **Agentic** | **99%** | **42** | 100% | 96% (27/28) | 100% | 100% | 100% |
+
+This is the whole thesis in one table. `lookup` (a single fact) is the one question type plain RAG handles reasonably — 84% correct, because a single relevant chunk is usually retrievable by similarity. GraphRAG's one-hop expansion (PREV/NEXT/same-venue facts) roughly doubles `multi_hop` and nearly triples `temporal` accuracy over RAG, since those facts are often already sitting in the immediate neighbourhood of a similarity hit. But **neither baseline gets a single `aggregation` or `superlative` question right** — these need every matching event for a `sport + games` filter (8–43 documents in this dataset), and no top-k similarity search, however the k is tuned, retrieves an exhaustive set. The agentic pipeline answers those with a deterministic `COUNT`/scan against the exact filter predicate instead of guessing from a handful of chunks, at **zero LLM tokens** for every question type except `multi_hop` (where venue+date ties occasionally need a disambiguating LLM call).
+
+The one agentic miss (`multi_hop`, 27/28) is `pub-060` — a three-way date tie among fencing events at ExCeL, where disambiguation fell to the LLM and it guessed wrong. Its certificate honestly reports `pass_with_llm_recovery` rather than a deterministic `pass`, which is the point: the certificate's 100% pass rate measures "was the evidence-completeness check satisfied," not "was the answer correct" — those are deliberately different axes, and this case is exactly where they can diverge.
+
+Full per-question-type numbers: `results/summary.json`. Raw per-question traces (answer, tokens, and for the agentic pipeline, the full certificate) for both the 100 public and 50 hidden questions: `results/*_public.jsonl` and `results/*_hidden.jsonl`.
 
 ## Repo layout
 

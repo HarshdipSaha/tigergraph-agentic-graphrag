@@ -1,0 +1,152 @@
+{
+  "agentic": {
+    "aggregation": {
+      "n": 21,
+      "accuracy": 1.0,
+      "avg_coverage": 1.0,
+      "avg_tokens": 0.0,
+      "avg_latency_ms": 237.14285714285714,
+      "cert_pass_rate": 1.0
+    },
+    "_all": {
+      "n": 100,
+      "accuracy": 0.99,
+      "avg_coverage": 0.99,
+      "avg_tokens": 42.48,
+      "avg_latency_ms": 369.83,
+      "cert_pass_rate": 1.0
+    },
+    "temporal": {
+      "n": 22,
+      "accuracy": 1.0,
+      "avg_coverage": 1.0,
+      "avg_tokens": 0.0,
+      "avg_latency_ms": 496.59090909090907,
+      "cert_pass_rate": 1.0
+    },
+    "superlative": {
+      "n": 10,
+      "accuracy": 1.0,
+      "avg_coverage": 1.0,
+      "avg_tokens": 0.0,
+      "avg_latency_ms": 226.4,
+      "cert_pass_rate": 1.0
+    },
+    "multi_hop": {
+      "n": 28,
+      "accuracy": 0.9642857142857143,
+      "avg_coverage": 0.9642857142857143,
+      "avg_tokens": 151.71428571428572,
+      "avg_latency_ms": 517.0357142857143,
+      "cert_pass_rate": 1.0
+    },
+    "lookup": {
+      "n": 19,
+      "accuracy": 1.0,
+      "avg_coverage": 1.0,
+      "avg_tokens": 0.0,
+      "avg_latency_ms": 228.26315789473685,
+      "cert_pass_rate": 1.0
+    }
+  },
+  "graphrag": {
+    "aggregation": {
+      "n": 21,
+      "accuracy": 0.0,
+      "avg_coverage": 0.2834716298483874,
+      "avg_tokens": 2311.7619047619046,
+      "avg_latency_ms": 14149.57142857143,
+      "cert_pass_rate": null
+    },
+    "_all": {
+      "n": 100,
+      "accuracy": 0.43,
+      "avg_coverage": 0.5259365475535737,
+      "avg_tokens": 2202.89,
+      "avg_latency_ms": 15507.54,
+      "cert_pass_rate": null
+    },
+    "temporal": {
+      "n": 22,
+      "accuracy": 0.7727272727272727,
+      "avg_coverage": 0.7727272727272727,
+      "avg_tokens": 2082.0,
+      "avg_latency_ms": 15607.727272727272,
+      "cert_pass_rate": null
+    },
+    "superlative": {
+      "n": 10,
+      "accuracy": 0.0,
+      "avg_coverage": 0.2640750528541226,
+      "avg_tokens": 2165.5,
+      "avg_latency_ms": 13945.7,
+      "cert_pass_rate": null
+    },
+    "multi_hop": {
+      "n": 28,
+      "accuracy": 0.32142857142857145,
+      "avg_coverage": 0.35714285714285715,
+      "avg_tokens": 2371.1071428571427,
+      "avg_latency_ms": 16502.571428571428,
+      "cert_pass_rate": null
+    },
+    "lookup": {
+      "n": 19,
+      "accuracy": 0.8947368421052632,
+      "avg_coverage": 0.8947368421052632,
+      "avg_tokens": 1994.3157894736842,
+      "avg_latency_ms": 16248.105263157895,
+      "cert_pass_rate": null
+    }
+  },
+  "rag": {
+    "aggregation": {
+      "n": 21,
+      "accuracy": 0.0,
+      "avg_coverage": 0.20849040510373218,
+      "avg_tokens": 1399.3809523809523,
+      "avg_latency_ms": 8982.857142857143,
+      "cert_pass_rate": null
+    },
+    "_all": {
+      "n": 100,
+      "accuracy": 0.25,
+      "avg_coverage": 0.38233576368851585,
+      "avg_tokens": 1389.27,
+      "avg_latency_ms": 9317.78,
+      "cert_pass_rate": null
+    },
+    "temporal": {
+      "n": 22,
+      "accuracy": 0.2727272727272727,
+      "avg_coverage": 0.5,
+      "avg_tokens": 1366.3636363636363,
+      "avg_latency_ms": 8187.590909090909,
+      "cert_pass_rate": null
+    },
+    "superlative": {
+      "n": 10,
+      "accuracy": 0.0,
+      "avg_coverage": 0.18552778616732107,
+      "avg_tokens": 1328.5,
+      "avg_latency_ms": 8784.3,
+      "cert_pass_rate": null
+    },
+    "multi_hop": {
+      "n": 28,
+      "accuracy": 0.10714285714285714,
+      "avg_coverage": 0.14285714285714285,
+      "avg_tokens": 1463.607142857143,
+      "avg_latency_ms": 9993.607142857143,
+      "cert_pass_rate": null
+    },
+    "lookup": {
+      "n": 19,
+      "accuracy": 0.8421052631578947,
+      "avg_coverage": 0.8947368421052632,
+      "avg_tokens": 1327.0526315789473,
+      "avg_latency_ms": 10281.421052631578,
+      "cert_pass_rate": null
+    }
+  }
+}
