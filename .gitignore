@@ -10,3 +10,7 @@ results/smoke.jsonl
 .playwright-mcp/
 *.egg-info/
 .streamlit/
+docs/demo/frames/
+docs/demo/audio/
+docs/demo/scenes/
+docs/demo/concat.txt
