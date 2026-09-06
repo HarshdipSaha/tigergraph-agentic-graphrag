@@ -28,6 +28,8 @@ flowchart LR
     F --> V
 ```
 
+Exported image (for the demo video / slide deck / hackathon submission form, since not every viewer renders mermaid): [`docs/diagrams/architecture.png`](docs/diagrams/architecture.png) (also available as [`.svg`](docs/diagrams/architecture.svg)). Rendered from the mermaid source above via `docs/diagrams/architecture.mmd`, so the two never drift apart — re-run `npx @mermaid-js/mermaid-cli -i docs/diagrams/architecture.mmd -o docs/diagrams/architecture.png -b white -w 2400 -H 1200 -s 3 -p docs/diagrams/puppeteer-config.json` after editing either.
+
 Three pipelines answer the same 150 benchmark questions (100 public with gold answers, 50 hidden):
 
 - **RAG** — vector top-k over text chunks, one LLM call.

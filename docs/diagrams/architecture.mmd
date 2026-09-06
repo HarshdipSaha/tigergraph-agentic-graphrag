@@ -1,0 +1,15 @@
+flowchart LR
+    Q[Question] --> R[Router: 5 templates -> completeness class]
+    R -->|existential| T1[exact match / venue+date traversal]
+    R -->|chained| T2[PREV hop chain]
+    R -->|exhaustive| T3[GSQL structural scan: COUNT + all events]
+    R -->|unknown| F[GraphRAG fallback]
+    T1 & T2 & T3 --> E[Evidence evaluator]
+    E -->|complete| A[Answer + Certificate]
+    E -->|gap| L[LLM: disambiguate / extract] --> A
+    subgraph TigerGraph Savanna
+        G[(Event / Games / Venue / Athlete graph)]
+        V[(Chunk vectors)]
+    end
+    T1 & T2 & T3 --> G
+    F --> V
