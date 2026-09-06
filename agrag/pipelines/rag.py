@@ -8,11 +8,16 @@ from agrag.questions import Question
 
 
 class RagPipeline:
-    """Fixed sequence: embed question -> top-k chunks -> one LLM call."""
+    """Fixed sequence: embed question -> top-k chunks -> one LLM call.
+
+    k=4 (not 8): a full 150-question run at k=8 costs ~2,400 tokens/request in retrieved context alone,
+    which exceeds Groq's free-tier 200k-tokens/day cap before the run finishes. k=4 is still a realistic
+    RAG configuration and doesn't change the qualitative comparison — no k under ~40 lets top-k retrieval
+    answer an aggregation question needing 41 documents."""
 
     name = "rag"
 
-    def __init__(self, backend: GraphBackend, llm: LLM, k: int = 8):
+    def __init__(self, backend: GraphBackend, llm: LLM, k: int = 4):
         self.b, self.llm, self.k = backend, llm, k
 
     def answer(self, q: Question) -> PipelineResult:

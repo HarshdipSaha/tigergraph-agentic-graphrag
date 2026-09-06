@@ -8,11 +8,17 @@ from agrag.questions import Question
 
 
 class GraphRagPipeline:
-    """Fixed sequence: top-k chunks -> 1-hop graph neighbourhood of every hit -> one LLM call. No branching."""
+    """Fixed sequence: top-k chunks -> 1-hop graph neighbourhood of every hit -> one LLM call. No branching.
+
+    k=3 and a same-venue cap of 2 (not 6/5): each seed can otherwise contribute up to 8 fact blocks
+    (event + prev + next + 5 same-venue), and some venues host 50+ events at one Games — at k=6 that
+    blew past Groq's free-tier 200k-tokens/day cap partway through a 150-question run."""
 
     name = "graphrag"
 
-    def __init__(self, backend: GraphBackend, llm: LLM, k: int = 6):
+    SAME_VENUE_CAP = 2
+
+    def __init__(self, backend: GraphBackend, llm: LLM, k: int = 3):
         self.b, self.llm, self.k = backend, llm, k
 
     def answer(self, q: Question) -> PipelineResult:
@@ -32,7 +38,7 @@ class GraphRagPipeline:
                     if n[rel] is not None:
                         facts.append(f"({rel} Games) " + event_facts(n[rel]))
                         expanded.append(n[rel].doc_id)
-                for e in n["same_venue"][:5]:
+                for e in n["same_venue"][: self.SAME_VENUE_CAP]:
                     facts.append("(same venue) " + event_facts(e))
                     expanded.append(e.doc_id)
                 trace.append({"tool": "neighborhood", "doc_id": doc_id, "expanded": len(expanded)})
