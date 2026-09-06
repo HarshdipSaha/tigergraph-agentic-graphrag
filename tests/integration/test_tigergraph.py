@@ -33,3 +33,12 @@ def test_lookup_and_prev(tg):
 def test_vector_search_returns_k(tg):
     hits = tg.vector_search(FakeEmbedder(dim=384).embed(["biathlon sprint"])[0], k=5)
     assert len(hits) == 5 and all(h.text for h in hits)
+
+
+def test_neighborhood_and_prev_event_return_none_for_non_event_doc(tg):
+    """Q1183979 is a distractor Document (not an Event) that a real vector_search on a hidden question
+    surfaced as a top-3 hit — TigerGraph rejects it as a VERTEX<Event> param with 'Failed to convert
+    user vertex id', which must be caught and turned into None (matching LocalBackend's contract),
+    not left to crash the caller."""
+    assert tg.neighborhood("Q1183979") is None
+    assert tg.prev_event("Q1183979") is None

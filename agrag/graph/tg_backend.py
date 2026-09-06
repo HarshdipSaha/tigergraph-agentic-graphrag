@@ -14,6 +14,14 @@ def _opt(v) -> Optional[int]:
     return None if v is None or int(v) < 0 else int(v)
 
 
+def _is_vertex_type_mismatch(e: Exception) -> bool:
+    """True when TigerGraph rejected a vertex id because it isn't an Event — e.g. a vector_search hit
+    landed on a distractor Document (film/person) with no corresponding Event vertex. LocalBackend
+    returns None/[] for this case (see local_backend.py); TigerGraphBackend must match that contract
+    instead of letting the query exception propagate and crash the caller."""
+    return "Failed to convert user vertex id" in str(e)
+
+
 def event_from_vertex(v: dict) -> EventRecord:
     a = v["attributes"]
     year, season = a["games"].split(" ", 1)
@@ -35,7 +43,12 @@ class TigerGraphBackend:
         return cls(connect(), embedder or SentenceTransformerEmbedder())
 
     def _events(self, query: str, params: dict, key: str = "R") -> list[EventRecord]:
-        res = self.conn.runInstalledQuery(query, params)
+        try:
+            res = self.conn.runInstalledQuery(query, params)
+        except Exception as e:
+            if _is_vertex_type_mismatch(e):
+                return []
+            raise
         block = next((b for b in res if key in b), {})
         return [event_from_vertex(v) for v in block.get(key, [])]
 
@@ -59,7 +72,12 @@ class TigerGraphBackend:
         return evs[0] if evs else None
 
     def neighborhood(self, doc_id: str) -> Optional[Neighborhood]:
-        res = self.conn.runInstalledQuery("event_neighborhood", {"ev": (doc_id,)})
+        try:
+            res = self.conn.runInstalledQuery("event_neighborhood", {"ev": (doc_id,)})
+        except Exception as e:
+            if _is_vertex_type_mismatch(e):
+                return None
+            raise
         get = lambda k: next((b[k] for b in res if k in b), [])
         start = get("Start")
         if not start:
