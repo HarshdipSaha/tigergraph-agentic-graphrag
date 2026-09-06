@@ -50,6 +50,9 @@ Then:
 
 ```bash
 python scripts/tg_smoke.py                              # confirm the connection
+# If tg_smoke.py fails with a 500/502, the Savanna free-tier workspace has likely auto-suspended
+# (it does this after ~60 min idle). Resume it in the Savanna dashboard, then:
+python scripts/tg_wait.py                               # polls until it's back, or times out
 python scripts/tg_load.py                                # load corpus.jsonl into the graph (~2,951 docs, ~20k chunks)
 python scripts/reconcile.py --backend tigergraph          # council-mandated completeness check (see docs/idea-spec.md §6)
 python -m agrag.eval.run --pipeline rag --backend tigergraph
