@@ -118,6 +118,7 @@ Completeness was validated, not assumed: reconciliation ran twice — once local
 
 ## Built with
 
+Demo: https://www.loom.com/share/6c4edb59ed714f1694d1bc65cca2d934
 **TigerGraph Savanna** (graph + vector attributes, GSQL structural scans) · **Groq** for the few LLM calls that survive routing · **Streamlit** for the comparison dashboard. Built for the TigerGraph Agentic GraphRAG Hackathon.
 
 Deeper reading: [architecture diagram](docs/diagrams/architecture.png) · [idea spec & council review](docs/idea-spec.md) · [literature scan](docs/research-scan-agentic-graphrag.md) · [hackathon brief](docs/hackathon-brief.md) · [build status](docs/status.md)
