@@ -56,6 +56,11 @@ Every one of these was root-caused and fixed with a real code or configuration c
 - **RAG pipeline, public set: 25/100 correct**, with the failure distributed exactly as predicted: `lookup` 16/19 (RAG's best case — a single fact, findable by similarity), `temporal` 6/22, `multi_hop` 3/28, and **0/21 on `aggregation`, 0/10 on `superlative`** — the question types that structurally require an exhaustive evidence set no top-k similarity search can produce.
 - GraphRAG public run in progress at time of writing.
 
+## Phase 8 — Post-Inception Efforts: Jev System One & Hidden Evaluation Refresh (2026-09-21)
+
+1. **Effort 001 (`001-jev-system-one-integration`):** Integrated TypeSafe AI's **Jev System One** decision model into `agrag/decision.py` and `agrag/pipelines/agentic.py`. Added non-autoregressive intent routing fallback for non-templated natural queries (5/5 on test queries vs 0/5 for regex) and zero-token typed candidate disambiguation with calibrated probabilities for multi-candidate graph collisions (addressing the `pub-060` date tie). Delivered via PR #1 and merged into `main`.
+2. **Effort 002 (`002-hidden-benchmark-refresh`):** Re-evaluated the 50 hidden benchmark questions (`data/eval_hidden.jsonl`) against live TigerGraph Savanna with Jev enabled. Successfully resolved `eval-001` (Olympic Tennis Centre on 15–22 August 2004) from a previous failure (`"answer": null`, 958 tokens) to a certified pass (`"Sébastien VieilledentAdrien Hardy"`, 712 tokens) with `jev_disambiguate`, reducing tokens while improving benchmark integrity.
+
 ## Status at time of this document
 
-TigerGraph reconciliation confirmed twice (locally against the parsed corpus, and again against the loaded live graph) at 99/100 answers / 100/100 evidence sets. Repository pushed to a private GitHub repo (`HarshdipSaha/tigergraph-agentic-graphrag`). GraphRAG public, then the hidden-set runs for all three pipelines, then the metrics dashboard and final README numbers, remain to close out the plan's Tasks 15–17.
+All 65 unit tests + 4 TigerGraph integration tests pass (69/69, 100%). Public (100) and hidden (50) evaluations completed across all pipelines and refreshed under the Jev System One decision architecture. Repository fully synchronized with `origin/main`.

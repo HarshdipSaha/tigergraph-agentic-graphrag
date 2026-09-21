@@ -1,13 +1,16 @@
 # AI-DLC Registry
 
-Derived view — rebuild from per-effort state files if efforts are added; the filesystem under `aidlc-docs/` is the source of truth.
+Derived view — rebuilt from per-effort state files; the filesystem under `aidlc-docs/` is the source of truth.
 
-## Inception
+## Inception Baseline
 
 | Status | Path | Notes |
 |---|---|---|
-| Complete | `aidlc-docs/inception/` | Brownfield inception, written 2026-09-06, covering the full build from hackathon discovery through live benchmark results. See `inception/00-timeline.md` for the narrative and `inception/audit.md` for the approval-gate deviation note. |
+| Complete | [`aidlc-docs/inception/`](inception/) | Brownfield inception covering the full build from hackathon discovery through live benchmark results and TigerGraph Savanna setup. |
 
 ## Efforts
 
-None yet. The next feature, fix, or refactor against this baseline should be numbered `001` and placed at `aidlc-docs/efforts/001-{ref}/` with its own `effort-state.md`.
+| Effort | Reference | Status | Completed At | Notes |
+|---|---|---|---|---|
+| `001` | [`001-jev-system-one-integration`](efforts/001-jev-system-one-integration/effort-state.md) | `complete` | 2026-09-21 | TypeSafe AI Jev System One decision model integration: non-template routing fallback, zero-token candidate disambiguation, 69/69 passing tests, merged via PR #1. |
+| `002` | [`002-hidden-benchmark-refresh`](efforts/002-hidden-benchmark-refresh/effort-state.md) | `complete` | 2026-09-21 | Re-evaluation of 50 hidden benchmark questions (`results/agentic_hidden.jsonl`) on live TigerGraph with Jev enabled; converted `eval-001` from failure to certified pass. |

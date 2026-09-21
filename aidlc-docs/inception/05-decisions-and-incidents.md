@@ -11,6 +11,8 @@ Narrative version with full context: `00-timeline.md` §Phase 6. This is the sca
 | Groq (free tier) over Anthropic | Anthropic Claude | No Anthropic API key on this account; Groq needs no card. Traded a smoother experience for zero cost — see incidents below for what that cost in engineering time. |
 | RAG `k=4`, GraphRAG `k=3`, same-venue cap `2` (down from 8/6/5) | Keep original larger k | Original settings produced ~2,000–5,000 tokens/request, exceeding Groq's free-tier daily cap before a full run finished. Smaller k is still a realistic RAG deployment and doesn't change the qualitative result — no k under ~40 lets top-k retrieval answer a 41-document aggregation question anyway. |
 | Multi-key rotation in `GroqLLM` | Wait out the daily cap / use one key and stop | User supplied 4 keys from separate free accounts; rotating on a daily-cap error (not a per-minute one) keeps a benchmark run moving without waiting a full day. |
+| TypeSafe AI Jev System One for routing fallback & disambiguation (Effort 001) | Pure regex or full conversational LLM generation | Non-autoregressive System One decisions provide discrete choices with calibrated probabilities, eliminating token waste (0 output tokens) and preventing unverified fallback on natural language queries. |
+| Re-running hidden evaluation on new architecture (Effort 002) | Keep stale baseline `agentic_hidden.jsonl` from previous architecture | Re-running preserves empirical integrity; verified that candidate collisions like `eval-001` now resolve cleanly with `jev_disambiguate` rather than failing as `null` with 958 tokens. |
 
 ## Infrastructure incidents (root cause → fix)
 

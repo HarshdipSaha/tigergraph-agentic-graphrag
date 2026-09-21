@@ -7,9 +7,10 @@
 | Graph client | `pyTigerGraph` ≥1.8 | Official Python client; used for both DDL execution and query calls. |
 | LLM (default) | Groq, `openai/gpt-oss-20b` | Free tier, no card required — chosen because this account has no Anthropic API access. Model chosen live after the originally-planned `llama-3.3-70b-versatile` was found retired from Groq's catalog. |
 | LLM (alternative) | Anthropic (any Claude model via `AGRAG_MODEL`) | Implemented behind the same `LLM` protocol for anyone who has API access; not the default path taken in this build. |
+| Decision Model | TypeSafe AI Jev (System One) | Frontier non-autoregressive decision model (`agrag/decision.py`) providing typed choices and calibrated probabilities with zero output token generation. Used for non-templated intent routing fallback and candidate disambiguation. |
 | Embeddings | `sentence-transformers`, `all-MiniLM-L6-v2`, 384-dim, cosine | CPU-only in this environment (no GPU); embedding ~23k chunks took roughly an hour, which is itself the root cause of the auto-suspend incident (see decisions log). |
 | Validation | `pydantic` v2 | `Certificate`/`TokenUsage` schema. |
-| Testing | `pytest` | 62 tests, `pytest.ini_options` in `pyproject.toml`, `integration` marker gates live-TigerGraph tests. |
+| Testing | `pytest` | 65 tests, `pytest.ini_options` in `pyproject.toml`, `integration` marker gates live-TigerGraph tests. |
 | Dashboard | `streamlit` + `pandas` | Comparison dashboard over `results/*.jsonl`. |
 | Config | `python-dotenv` | `.env` for secrets (TigerGraph host/graph/secret, Groq keys), never committed. |
 | VCS / hosting | git + GitHub (private repo) | `HarshdipSaha/tigergraph-agentic-graphrag`, pushed with `gh repo create`. |
