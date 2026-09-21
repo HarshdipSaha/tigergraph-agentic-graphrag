@@ -20,6 +20,10 @@ class Settings:
     model: str = os.getenv("AGRAG_MODEL", "openai/gpt-oss-20b")
     max_tokens: int = int(os.getenv("AGRAG_MAX_TOKENS", "1024"))
     embed_model: str = os.getenv("AGRAG_EMBED_MODEL", "all-MiniLM-L6-v2")
+    jev_enabled: bool = os.getenv("JEV_ENABLED", "false").lower() in ("1", "true", "yes")
+    jev_api_key: str = os.getenv("JEV_API_KEY", "")
+    jev_model: str = os.getenv("JEV_MODEL", "jev-latest")
+    jev_timeout_ms: int = int(os.getenv("JEV_TIMEOUT_MS", "5000"))
 
     @property
     def groq_api_keys(self) -> list[str]:
