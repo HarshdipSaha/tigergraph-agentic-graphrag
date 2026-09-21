@@ -1,12 +1,20 @@
 flowchart LR
-    Q[Question] --> R[Router: 5 templates -> completeness class]
-    R -->|existential| T1[exact match / venue+date traversal]
-    R -->|chained| T2[PREV hop chain]
-    R -->|exhaustive| T3[GSQL structural scan: COUNT + all events]
-    R -->|unknown| F[GraphRAG fallback]
+    Q[Question] --> R[Router: 5 Regex Templates]
+    R -->|matched| C{Completeness Class}
+    R -->|non-template| J1[Jev System One: Intent Router]
+    J1 -->|classified| C
+    J1 -->|unclassified| F[GraphRAG fallback]
+
+    C -->|existential| T1[exact match / venue+date traversal]
+    C -->|chained| T2[PREV hop chain]
+    C -->|exhaustive| T3[GSQL structural scan: COUNT + all events]
+
     T1 & T2 & T3 --> E[Evidence evaluator]
     E -->|complete| A[Answer + Certificate]
-    E -->|gap| L[LLM: disambiguate / extract] --> A
+    E -->|ambiguous tie| J2[Jev System One: Typed Disambiguation]
+    J2 -->|resolved| A
+    J2 -->|gap/fallback| L[LLM: disambiguate / extract] --> A
+
     subgraph TigerGraph Savanna
         G[(Event / Games / Venue / Athlete graph)]
         V[(Chunk vectors)]

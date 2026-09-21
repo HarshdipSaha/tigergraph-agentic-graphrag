@@ -12,14 +12,22 @@ Every answer the agentic pipeline gives ships an **Investigation Certificate**: 
 
 ```mermaid
 flowchart LR
-    Q[Question] --> R[Router: 5 templates -> completeness class]
-    R -->|existential| T1[exact match / venue+date traversal]
-    R -->|chained| T2[PREV hop chain]
-    R -->|exhaustive| T3[GSQL structural scan: COUNT + all events]
-    R -->|unknown| F[GraphRAG fallback]
+    Q[Question] --> R[Router: 5 Regex Templates]
+    R -->|matched| C{Completeness Class}
+    R -->|non-template| J1[Jev System One: Intent Router]
+    J1 -->|classified| C
+    J1 -->|unclassified| F[GraphRAG fallback]
+
+    C -->|existential| T1[exact match / venue+date traversal]
+    C -->|chained| T2[PREV hop chain]
+    C -->|exhaustive| T3[GSQL structural scan: COUNT + all events]
+
     T1 & T2 & T3 --> E[Evidence evaluator]
     E -->|complete| A[Answer + Certificate]
-    E -->|gap| L[LLM: disambiguate / extract] --> A
+    E -->|ambiguous tie| J2[Jev System One: Typed Disambiguation]
+    J2 -->|resolved| A
+    J2 -->|gap/fallback| L[LLM: disambiguate / extract] --> A
+
     subgraph TigerGraph Savanna
         G[(Event / Games / Venue / Athlete graph)]
         V[(Chunk vectors)]
@@ -28,13 +36,62 @@ flowchart LR
     F --> V
 ```
 
-Exported image (for the demo video / slide deck / hackathon submission form, since not every viewer renders mermaid): [`docs/diagrams/architecture.png`](docs/diagrams/architecture.png) (also available as [`.svg`](docs/diagrams/architecture.svg)). Rendered from the mermaid source above via `docs/diagrams/architecture.mmd`, so the two never drift apart — re-run `npx @mermaid-js/mermaid-cli -i docs/diagrams/architecture.mmd -o docs/diagrams/architecture.png -b white -w 2400 -H 1200 -s 3 -p docs/diagrams/puppeteer-config.json` after editing either.
+Exported image (for the demo video / slide deck / hackathon submission form, since not every viewer renders mermaid): [`docs/diagrams/architecture.png`](docs/diagrams/architecture.png) (also available as [`.svg`](docs/diagrams/architecture.svg)). Rendered from the mermaid source above via `docs/diagrams/architecture.mmd`, so the two never drift apart — re-run `npx @mermaid-js/mermaid-cli -i docs/diagrams/architecture.mmd -o docs/diagrams/architecture.png -b white -w 2400 -H 1200 -s 3 -p docs/diagrams/puppeteer-config.json` after editing either. Detailed architectural explanation: [`docs/architecture-jev.md`](docs/architecture-jev.md).
 
 Three pipelines answer the same 150 benchmark questions (100 public with gold answers, 50 hidden):
 
 - **RAG** — vector top-k over text chunks, one LLM call.
 - **GraphRAG** — top-k chunks plus a fixed one-hop graph expansion (PREV/NEXT/same-venue), one LLM call.
-- **Agentic** — routes by completeness class, uses cheap deterministic graph queries where they suffice, calls the LLM only to disambiguate ties or recover a missing field, and emits a certificate.
+- **Agentic** — routes by completeness class (with Jev System One fallback), uses cheap deterministic graph queries where they suffice, calls Jev or the LLM only to disambiguate ties or recover a missing field, and emits a certificate.
+
+## 🆒 JEV addition
+
+Integrated via PR #1, TypeSafe AI's **Jev System One** decision model ([`agrag/decision.py`](agrag/decision.py)) brings fast, non-autoregressive typed decisions into the TigerGraph Agentic GraphRAG pipeline. Instead of relying solely on heavy generative text models, Jev provides discrete decision intelligence consumed directly by software control flow at zero output token cost. Complete technical specifications are detailed in [`JEV.md`](JEV.md) and [`docs/architecture-jev.md`](docs/architecture-jev.md).
+
+### Capabilities
+
+1. **Non-Template Intent Classification**
+   - The primary router uses rigid regex heuristics over benchmark phrasing. Arbitrary natural language questions outside template syntax previously defaulted to unverified RAG.
+   - Jev System One acts as an intent classifier across the five evidential classes (`lookup`, `multi_hop`, `temporal`, `aggregation`, `superlative`), achieving **100% accuracy (5/5)** on un-templated test queries with zero output tokens generated.
+
+| Test Query | Regex Router | Jev System One Route | Result |
+|---|---|---|---|
+| *How many countries participated in the 1996 Summer Olympics?* | `unknown` (Unverified RAG) | `lookup` (existential) | **Pass** (conf=1.00) |
+| *Tell me who took the gold medal at ExCeL on 30 July 2012* | `unknown` (Unverified RAG) | `multi_hop` (existential) | **Pass** (conf=1.00) |
+| *Which athlete won the 100m sprint right before the 2012 Games?* | `unknown` (Unverified RAG) | `temporal` (chained) | **Pass** (conf=1.00) |
+| *Find the number of wrestling events in 2004 with more than 20 competitors* | `unknown` (Unverified RAG) | `aggregation` (exhaustive) | **Pass** (conf=1.00) |
+| *What was the largest event by participant count in 2008?* | `unknown` (Unverified RAG) | `superlative` (exhaustive) | **Pass** (conf=1.00) |
+
+2. **Zero-Token Typed Candidate Disambiguation**
+   - Resolves multi-candidate graph collisions (such as `pub-060` with three fencing/judo events on 30 July 2012 at ExCeL) by evaluating structured candidate criteria.
+   - Outputs discrete document selections with calibrated confidence and probabilities, avoiding the hallucination and token overhead of generative models.
+
+3. **Verifiable Certificate Step Logging**
+   - Every Jev decision emits structured telemetry into the **Investigation Certificate**:
+
+```json
+{
+  "tool": "jev_disambiguate",
+  "note": "Jev (jev-latest) 3 candidates -> Q1064016 (conf=0.98)",
+  "tokens": {"input": 182, "output": 0},
+  "latency_ms": 312
+}
+```
+
+### Jev Quickstart & Benchmarking
+
+Configure in `.env`:
+```env
+JEV_API_KEY=your_typesafe_jev_key
+JEV_MODEL=jev-latest
+JEV_TIMEOUT_MS=5000
+```
+
+Run the benchmark and decision model tests:
+```bash
+python scripts/benchmark_jev.py          # benchmark intent routing and pub-060 disambiguation
+python -m pytest tests/test_decision_jev.py # verify unit tests for mock and live Jev models
+```
 
 ## Reproduction
 
@@ -47,6 +104,7 @@ python scripts/download_data.py          # or use the data/ files already in thi
 Copy `.env.example` to `.env` and fill in:
 - `TG_HOST`, `TG_GRAPH`, `TG_SECRET` — a TigerGraph Savanna workspace with the graph and vector attribute created (`agrag/graph/schema.gsql`) and the queries installed (`agrag/graph/queries.gsql`) — paste both into the workspace's Query Editor, or use `python scripts/tg_setup.py --schema` / `--queries`.
 - `GROQ_API_KEY` — free, no card required, at https://console.groq.com/keys (default provider; `.env` also supports switching to Anthropic).
+- `JEV_API_KEY` — (optional) TypeSafe AI key for Jev System One decision model (intent routing fallback & zero-token candidate disambiguation).
 
 Then:
 
@@ -115,9 +173,9 @@ Full per-question-type numbers: `results/summary.json`. Raw per-question traces 
 
 ## Repo layout
 
-- `agrag/` — the package: infobox parsing, router, deterministic tools, certificate model, three pipelines, TigerGraph backend.
+- `agrag/` — the package: infobox parsing, router, deterministic tools, decision model (`agrag/decision.py`), certificate model, three pipelines, TigerGraph backend.
 - `agrag/graph/` — GSQL schema and queries, the only place that talks to `pyTigerGraph`.
-- `scripts/` — one-shot operational scripts (data download, TigerGraph setup/load/smoke test, reconciliation).
-- `tests/` — unit tests against an in-memory backend; `tests/integration/` needs a live `TG_HOST`.
+- `scripts/` — one-shot operational scripts (data download, TigerGraph setup/load/smoke test, reconciliation, `benchmark_jev.py`).
+- `tests/` — unit tests against an in-memory backend (`test_decision_jev.py`); `tests/integration/` needs a live `TG_HOST`.
 - `dashboard/` — Streamlit comparison dashboard.
-- `docs/` — hackathon rules, literature scan, idea spec (with the LLM council's verdict), build status.
+- `docs/` — hackathon rules, literature scan, idea spec, architecture explanation (`docs/architecture-jev.md`), build status.
