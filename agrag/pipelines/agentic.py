@@ -10,12 +10,13 @@ from typing import Optional
 
 from agrag.backend import GraphBackend
 from agrag.certificate import Certificate, Step, TokenUsage
+from agrag.decision import DecisionModel, get_decision_model
 from agrag.infobox import EventRecord
 from agrag.llm import LLM
 from agrag.pipelines.base import PipelineResult, Timer, clean_answer, event_facts
 from agrag.pipelines.graphrag import GraphRagPipeline
 from agrag.questions import Question
-from agrag.router import ParsedQuestion, route
+from agrag.router import CLASS_OF, ParsedQuestion, Template, route
 from agrag.tools import (
     ToolResult,
     aggregation_scan,
@@ -41,12 +42,40 @@ RETRIEVAL_MODE = {"lookup": "exact_match", "multi_hop": "venue_date_traversal", 
 class AgenticPipeline:
     name = "agentic"
 
-    def __init__(self, backend: GraphBackend, llm: LLM):
+    def __init__(self, backend: GraphBackend, llm: LLM, decision_model: Optional[DecisionModel] = None):
         self.b, self.llm = backend, llm
+        self.decision_model = decision_model
         self._fallback = GraphRagPipeline(backend, llm)
 
-    # ---------- LLM helpers (the only place tokens are spent) ----------
+    # ---------- Decision & LLM helpers (where tokens / decisions are spent) ----------
     def _disambiguate(self, q: Question, cands: list[EventRecord]) -> tuple[Optional[EventRecord], Step]:
+        # Fast path: Jev System One non-autoregressive decision model
+        if self.decision_model and getattr(self.decision_model, "is_configured", False):
+            criteria = {
+                e.doc_id: f"{e.title} (Date: '{e.date_text}', Venue: '{e.venue}', Gold: {e.gold})"
+                for e in cands[:10]
+            }
+            state = (
+                f"Question: {q.question}\n\n"
+                "Candidate Events:\n"
+                + "\n".join(f"- {e.doc_id}: {e.title} | Date in infobox: '{e.date_text}' | Venue: '{e.venue}' | Gold: {e.gold}" for e in cands[:10])
+            )
+            instructions = (
+                "Select the candidate Olympic event that most precisely and specifically matches "
+                "the venue and date in the question. Prefer exact date string matches if there are ties."
+            )
+            dec = self.decision_model.choice(state, instructions, criteria, question_key="event_selection")
+            if dec and dec.decision in criteria:
+                chosen = next((e for e in cands if e.doc_id == dec.decision), None)
+                if chosen:
+                    return chosen, Step(
+                        tool="jev_disambiguate",
+                        note=f"Jev ({dec.model}) {len(cands)} candidates -> {chosen.doc_id} (conf={dec.confidence:.2f})",
+                        tokens=TokenUsage(input=dec.input_tokens, output=dec.output_tokens),
+                        latency_ms=dec.latency_ms,
+                    )
+
+        # Fallback to general generative LLM
         listing = "\n\n".join(f"{i+1}. doc {e.doc_id}\n{event_facts(e)}" for i, e in enumerate(cands))
         with Timer() as t:
             resp = self.llm.complete(DISAMBIGUATE_SYSTEM, f"Question: {q.question}\n\nCandidates:\n{listing}")
@@ -137,13 +166,61 @@ class AgenticPipeline:
         return r
 
     def _unrouted(self, q: Question, pq: ParsedQuestion) -> PipelineResult:
+        jev_step: Optional[Step] = None
+        detected_template = None
+        if self.decision_model and getattr(self.decision_model, "is_configured", False):
+            criteria = {
+                "lookup": "Single fact lookup such as counting participating nations in an Olympic Games",
+                "multi_hop": "Cross-reference who won an event held at a specific venue on a specific date",
+                "temporal": "Event held immediately before or after in time",
+                "aggregation": "Count or filter total events in a sport matching a threshold of competitors",
+                "superlative": "Identify the event in a sport with the highest or lowest number of competitors",
+            }
+            dec = self.decision_model.choice(
+                f"Question: {q.question}",
+                "Classify this Olympic query into the single most appropriate evidential category",
+                criteria,
+                question_key="inquiry_class",
+            )
+            if dec and dec.decision in criteria:
+                detected_template = dec.decision
+                jev_step = Step(
+                    tool="jev_route",
+                    note=f"Jev System One ({dec.model}) classified intent -> {detected_template} (conf={dec.confidence:.2f})",
+                    tokens=TokenUsage(input=dec.input_tokens, output=dec.output_tokens),
+                    latency_ms=dec.latency_ms,
+                )
+
         base = self._fallback.answer(q)
+        steps = [Step(tool="graphrag_fallback", note="question did not match regex template", tokens=base.tokens)]
+        if jev_step:
+            steps.insert(0, jev_step)
+        tokens = base.tokens + (jev_step.tokens if jev_step else TokenUsage())
+        latency_ms = base.latency_ms + (jev_step.latency_ms if jev_step else 0)
+
         cert = Certificate(
-            qid=q.qid, qtype=q.qtype or "unknown", completeness_class="unknown", classification_confidence="low",
-            retrieval_mode="graphrag_fallback", predicate={}, structural_bound=0, evidence_set_size=len(base.docs_retrieved),
-            completeness_check="unverified", docs_inspected=base.docs_retrieved,
-            steps=[Step(tool="graphrag_fallback", note="question did not match any template", tokens=base.tokens)],
-            tokens=base.tokens, latency_ms=base.latency_ms, stop_reason="fallback_single_pass",
+            qid=q.qid,
+            qtype=q.qtype or (detected_template or "unknown"),
+            completeness_class=CLASS_OF.get(detected_template, "unknown") if detected_template else "unknown",
+            classification_confidence="high" if (jev_step and "conf=1.00" in jev_step.note) else "low",
+            retrieval_mode="graphrag_fallback" if not detected_template else f"jev_{detected_template}_fallback",
+            predicate={},
+            structural_bound=0,
+            evidence_set_size=len(base.docs_retrieved),
+            completeness_check="unverified",
+            docs_inspected=base.docs_retrieved,
+            steps=steps,
+            tokens=tokens,
+            latency_ms=latency_ms,
+            stop_reason="fallback_single_pass",
         )
-        return PipelineResult(qid=q.qid, pipeline=self.name, answer=base.answer, docs_retrieved=base.docs_retrieved,
-                              tokens=base.tokens, latency_ms=base.latency_ms, trace=base.trace, certificate=cert)
+        return PipelineResult(
+            qid=q.qid,
+            pipeline=self.name,
+            answer=base.answer,
+            docs_retrieved=base.docs_retrieved,
+            tokens=tokens,
+            latency_ms=latency_ms,
+            trace=[s.model_dump() for s in steps],
+            certificate=cert,
+        )

@@ -25,12 +25,16 @@ def build_backend(kind: str, corpus: str):
     return TigerGraphBackend.from_settings()
 
 
-def build_pipeline(name: str, backend, llm):
+def build_pipeline(name: str, backend, llm, decision_model=None):
     from agrag.pipelines.agentic import AgenticPipeline
     from agrag.pipelines.graphrag import GraphRagPipeline
     from agrag.pipelines.rag import RagPipeline
 
-    classes = {"rag": RagPipeline, "graphrag": GraphRagPipeline, "agentic": AgenticPipeline}
+    if name == "agentic":
+        from agrag.decision import get_decision_model
+        dm = decision_model if decision_model is not None else get_decision_model()
+        return AgenticPipeline(backend, llm, decision_model=dm)
+    classes = {"rag": RagPipeline, "graphrag": GraphRagPipeline}
     return classes[name](backend, llm)
 
 
