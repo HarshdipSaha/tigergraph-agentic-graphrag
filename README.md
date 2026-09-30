@@ -197,7 +197,7 @@ python -m agrag.eval.run --pipeline graphrag  --backend tigergraph
 python -m agrag.eval.run --pipeline agentic   --backend tigergraph
 python -m agrag.eval.report
 
-streamlit run dashboard/app.py                  # side-by-side comparison
+streamlit run dashboard/app.py                  # side-by-side comparison (also live: https://investigation-certificates.streamlit.app/)
 ```
 
 Completeness was validated, not assumed: reconciliation ran twice — once locally against the parsed corpus before any agent code existed, and again against the loaded graph — and both records are committed in [`data/`](data/).
@@ -205,6 +205,7 @@ Completeness was validated, not assumed: reconciliation ran twice — once local
 ## Built with
 
 Demo: https://www.loom.com/share/6c4edb59ed714f1694d1bc65cca2d934  
+Live dashboard: https://investigation-certificates.streamlit.app/  
 **TigerGraph Savanna** (graph + vector attributes, GSQL structural scans) · **TypeSafe AI Jev** (System One non-autoregressive decision model) · **Groq** for the few LLM calls that survive routing · **Streamlit** for the comparison dashboard. Built for the TigerGraph Agentic GraphRAG Hackathon.
 
 Deeper reading: [architecture diagram](docs/diagrams/architecture.png) · [Jev architecture explanation](docs/architecture-jev.md) · [Jev technical notes](JEV.md) · [idea spec & council review](docs/idea-spec.md) · [literature scan](docs/research-scan-agentic-graphrag.md) · [hackathon brief](docs/hackathon-brief.md) · [build status](docs/status.md)
