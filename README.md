@@ -138,7 +138,7 @@ python -m pytest tests/test_decision_jev.py # verify unit tests for mock and liv
 ## The benchmark
 
 <div align="center">
-  <img src="docs/assets/results.png" alt="Accuracy by question type for RAG, GraphRAG and the agentic pipeline. Both baselines score 0% on aggregation and superlative; the agentic pipeline scores 100%. Overall 99% accuracy at 42 tokens and 0.37s per answer." width="880">
+  <img src="docs/assets/results.png" alt="Accuracy by question type for RAG, GraphRAG and the agentic pipeline. Both baselines score 0% on aggregation and superlative; the agentic pipeline scores 100%. Overall 99% accuracy at 18 tokens and 0.41s per answer." width="880">
 </div>
 
 Three pipelines, the same 100 public questions, the same live TigerGraph graph and the same live Groq model. The whole thesis is in two rows of that chart:
@@ -152,12 +152,12 @@ And it is *cheaper*, not more expensive, because the expensive part was never th
 | | RAG | GraphRAG | **Agentic** |
 |---|---|---|---|
 | Accuracy | 25% | 43% | **99%** |
-| Tokens per answer | 1,389 | 2,203 | **42** |
-| Latency per answer | 9.3s | 15.5s | **0.37s** |
+| Tokens per answer | 1,389 | 2,203 | **18** |
+| Latency per answer | 9.3s | 15.5s | **0.41s** |
 
-That's **52× fewer tokens** and **42× faster** than the GraphRAG baseline, at more than double the accuracy. Full per-type numbers in [`results/summary.json`](results/summary.json); raw per-question traces, including every certificate, in [`results/`](results/).
+That's **~120× fewer tokens** and **~38× faster** than the GraphRAG baseline, at more than double the accuracy. Full per-type numbers in [`results/summary.json`](results/summary.json); raw per-question traces, including every certificate, in [`results/`](results/).
 
-The single agentic miss is honest and instructive: `pub-060`, a three-way date tie among fencing events at ExCeL, where disambiguation fell to the LLM and it guessed wrong. Its certificate reports `pass_with_llm_recovery`, not a clean deterministic `pass` — because the certificate measures *"was the evidence complete,"* not *"was the answer right."* Those are deliberately different axes, and this is exactly where they diverge. Integrating Jev System One directly targets this failure mode with calibrated choice scoring.
+The single agentic miss is honest and instructive: `pub-060`, a date+venue tie among 37 candidate events at ExCeL. Jev System One made the pick (conf=0.90) and chose the wrong event, so Jev did not fix this case; the LLM guessed wrong here in the earlier run too. Its certificate reports `pass_with_llm_recovery`, not a clean deterministic `pass` — because the certificate measures *"was the evidence complete,"* not *"was the answer right."* Those are deliberately different axes, and this is exactly where they diverge.
 
 ## The certificate
 

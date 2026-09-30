@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 from agrag.eval.score import score_result
@@ -39,6 +40,9 @@ def build_pipeline(name: str, backend, llm, decision_model=None):
 
 
 def main() -> None:
+    # Windows consoles default to cp1252; answers contain non-ASCII names (e.g. Süleymanoğlu).
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser()
     ap.add_argument("--pipeline", choices=["rag", "graphrag", "agentic"], required=True)
     ap.add_argument("--backend", choices=["local", "tigergraph"], default="tigergraph")

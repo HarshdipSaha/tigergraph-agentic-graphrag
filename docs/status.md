@@ -18,7 +18,7 @@ Last updated: 2026-09-06
 |---|---|---|---|---|---|---|---|
 | RAG | 25% | 1,389 | 84% (16/19) | 11% (3/28) | 27% (6/22) | **0%** (0/21) | **0%** (0/10) |
 | GraphRAG | 43% | 2,203 | 89% (17/19) | 32% (9/28) | 77% (17/22) | **0%** (0/21) | **0%** (0/10) |
-| **Agentic** | **99%** | **42** | 100% | 96% (27/28) | 100% | 100% | 100% |
+| **Agentic** | **99%** | **18** | 100% | 96% (27/28) | 100% | 100% | 100% |
 
 The one agentic miss (`pub-060`, a three-way date tie among fencing events) is exactly the case its own certificate flags as `pass_with_llm_recovery` rather than a deterministic `pass` — the certificate mechanism validating itself. Full breakdown: `results/summary.json`. Raw per-question outputs (all 100 public + 50 hidden, per pipeline, with full certificates for the agentic pipeline): `results/*_public.jsonl`, `results/*_hidden.jsonl`.
 
