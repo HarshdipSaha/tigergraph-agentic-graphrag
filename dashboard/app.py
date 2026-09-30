@@ -1,8 +1,13 @@
 """streamlit run dashboard/app.py"""
 import json
+import sys
+from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+
+# Streamlit Cloud runs from the repo root without installing the package, so make agrag importable.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from agrag.eval.report import load_rows
 from agrag.eval.score import summarize
