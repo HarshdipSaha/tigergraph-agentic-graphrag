@@ -168,16 +168,18 @@ def test_planner_replans_only_for_a_question_supported_sport_refinement(mini_cor
     assert "gold" not in json.dumps(observation).lower()
 
 
-def test_planner_preserves_unsupported_venue_tie_without_spending_second_call(mini_corpus_path):
+def test_planner_disambiguates_small_venue_tie_but_keeps_certificate_unverified(mini_corpus_path):
     backend = LocalBackend.from_docs(_venue_docs(), embedder=FakeEmbedder(dim=8))
     question = "Who won the gold medal in the event held at Lake Venue on 20 September 1988?"
     action = _action("resolve_multi_hop", {"venue": "Lake Venue", "date": "20 September 1988", "year": 1988})
-    llm = ScriptedLLM([action])
+    llm = ScriptedLLM([action, "QSAIL"])
     result = AgenticPipeline(backend, llm).answer(Question("planner-tie", question, "", None, ()))
 
-    assert result.answer is None and result.certificate.completeness_check == "unverified"
+    assert result.answer == "Sailing Winner" and result.certificate.completeness_check == "unverified"
     assert result.certificate.docs_inspected == ["QROW", "QSAIL"]
-    assert llm.calls == 1
+    assert result.certificate.selected_doc_id == "QSAIL"
+    assert result.certificate.venue_resolution["selection_basis"] == "model_choice"
+    assert llm.calls == 2
 
 
 def test_planner_does_not_repeat_a_tie_when_the_first_action_already_used_sport(mini_corpus_path):
@@ -196,12 +198,12 @@ def test_planner_does_not_repeat_a_tie_when_the_first_action_already_used_sport(
         {"venue": "Lake Venue", "date": "20 September 1988", "year": 1988, "sport": "Rowing"},
     )
     question = "Who won the gold medal in rowing at the event held at Lake Venue on 20 September 1988?"
-    llm = ScriptedLLM([action])
+    llm = ScriptedLLM([action, "QROW2"])
     result = AgenticPipeline(backend, llm).answer(Question("planner-repeat-tie", question, "", None, ()))
 
-    assert result.answer is None and result.certificate.completeness_check == "unverified"
+    assert result.answer == "Another Rowing Winner" and result.certificate.completeness_check == "unverified"
     assert result.docs_retrieved == ["QROW", "QROW2"]
-    assert llm.calls == 1
+    assert llm.calls == 2
 
 
 def test_planner_provider_failure_does_not_issue_graph_rag_request(mini_corpus_path):

@@ -45,8 +45,9 @@ def main() -> None:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser()
     ap.add_argument("--pipeline", choices=["rag", "graphrag", "agentic"], required=True)
-    ap.add_argument("--agent-mode", choices=["planner", "template"], default="planner",
-                    help="agentic mode; planner asks the LLM to choose a graph tool (default)")
+    ap.add_argument("--agent-mode", choices=["planner", "template"], default="template",
+                    help="agentic mode: template (default, the submitted headline run) or planner "
+                         "(the LLM chooses which graph tool to call)")
     ap.add_argument("--backend", choices=["local", "tigergraph"], default="tigergraph")
     ap.add_argument("--questions", default="data/eval_public.jsonl")
     ap.add_argument("--corpus", default="data/corpus.jsonl")

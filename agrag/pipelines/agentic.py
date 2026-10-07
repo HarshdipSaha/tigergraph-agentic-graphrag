@@ -102,8 +102,7 @@ class AgenticPipeline:
             resp = self.llm.complete(
                 DISAMBIGUATE_SYSTEM, f"Question: {q.question}\n\nCandidates:\n{listing}", timeout_s=15.0
             )
-        m = re.search(r"Q\d+", resp.text)
-        chosen = next((e for e in cands if m and e.doc_id == m.group(0)), None)
+        chosen = next((e for e in cands if re.search(rf"\b{re.escape(e.doc_id)}\b", resp.text)), None)
         return chosen, Step(tool="llm_disambiguate", note=f"{len(cands)} candidates -> {chosen.doc_id if chosen else 'none'}",
                             tokens=TokenUsage(input=resp.input_tokens, output=resp.output_tokens), latency_ms=t.ms)
 
@@ -314,6 +313,17 @@ class AgenticPipeline:
                     check = "pass"
                 elif tool_result.eligible_count > 1 or tool_result.ambiguity_reason:
                     check = "unverified"
+                    # A small venue/date-eligible set the question cannot narrow further:
+                    # let the model choose among them, but keep the certificate unverified.
+                    if (tool_result.ambiguity_reason == "multiple_eligible_candidates"
+                            and 2 <= len(tool_result.candidates) <= 3):
+                        chosen, step = self._disambiguate(q, tool_result.candidates)
+                        steps.append(step)
+                        total_tokens = total_tokens + step.tokens
+                        if chosen is not None and chosen.gold:
+                            answer = chosen.gold
+                            selected_doc_id = chosen.doc_id
+                            tool_result.selection_basis = "model_choice"
                 else:
                     check = "fail"
             elif parsed.template == "temporal":

@@ -1,1 +1,1 @@
-The planner now selects among five TigerGraph tools and records grounded arguments; Python still verifies evidence. On the refreshed public set: 98/100 answers at 1,148.5 tokens each. Fixed routing: 99/100 at 14.3. Tool planning is visible, but this run costs more and scores lower. #TigerGraph #RAG
+Took a TigerGraph developer's feedback: the LLM now picks among five TigerGraph tools, and venue matches filter by date and sport. Public set: 99/100 either way, but planning costs 1,038 tokens/answer vs 14 for fixed routing. Fixed a cross-sport hidden-set miss. #TigerGraph #RAG
