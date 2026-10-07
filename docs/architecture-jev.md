@@ -4,6 +4,8 @@
 > **Status:** Integrated via PR #1 (`feature/jev-system-one-integration`)  
 > **Target:** TigerGraph Agentic GraphRAG Orchestration Pipeline
 
+> This page explains the Jev integration and earlier template-first design. The current default LLM action planner and measured planner/template comparison are documented in [`README.md`](../README.md) and Effort 003. Treat statements about zero-token decisions and candidate resolution as historical design claims; inspect current result traces and certificates for measured behavior.
+
 ---
 
 ## 1. Context and Problem Statement

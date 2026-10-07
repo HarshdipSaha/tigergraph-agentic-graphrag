@@ -26,7 +26,7 @@ def build_backend(kind: str, corpus: str):
     return TigerGraphBackend.from_settings()
 
 
-def build_pipeline(name: str, backend, llm, decision_model=None):
+def build_pipeline(name: str, backend, llm, decision_model=None, agent_mode: str = "planner"):
     from agrag.pipelines.agentic import AgenticPipeline
     from agrag.pipelines.graphrag import GraphRagPipeline
     from agrag.pipelines.rag import RagPipeline
@@ -34,7 +34,7 @@ def build_pipeline(name: str, backend, llm, decision_model=None):
     if name == "agentic":
         from agrag.decision import get_decision_model
         dm = decision_model if decision_model is not None else get_decision_model()
-        return AgenticPipeline(backend, llm, decision_model=dm)
+        return AgenticPipeline(backend, llm, decision_model=dm, agent_mode=agent_mode)
     classes = {"rag": RagPipeline, "graphrag": GraphRagPipeline}
     return classes[name](backend, llm)
 
@@ -45,6 +45,9 @@ def main() -> None:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser()
     ap.add_argument("--pipeline", choices=["rag", "graphrag", "agentic"], required=True)
+    ap.add_argument("--agent-mode", choices=["planner", "template"], default="template",
+                    help="agentic mode: template (default, the submitted headline run) or planner "
+                         "(the LLM chooses which graph tool to call)")
     ap.add_argument("--backend", choices=["local", "tigergraph"], default="tigergraph")
     ap.add_argument("--questions", default="data/eval_public.jsonl")
     ap.add_argument("--corpus", default="data/corpus.jsonl")
@@ -61,10 +64,11 @@ def main() -> None:
         llm = build_llm()   # honors AGRAG_LLM_PROVIDER (groq by default, or anthropic)
 
     backend = build_backend(args.backend, args.corpus)
-    pipe = build_pipeline(args.pipeline, backend, llm)
+    pipe = build_pipeline(args.pipeline, backend, llm, agent_mode=args.agent_mode)
     qs = load_questions(args.questions)[: args.limit]
     tag = Path(args.questions).stem.replace("eval_", "")
-    out = Path(args.out or f"results/{args.pipeline}_{tag}.jsonl")
+    mode_tag = f"_{args.agent_mode}" if args.pipeline == "agentic" else ""
+    out = Path(args.out or f"results/{args.pipeline}{mode_tag}_{tag}.jsonl")
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", encoding="utf-8") as f:
         for i, q in enumerate(qs, 1):

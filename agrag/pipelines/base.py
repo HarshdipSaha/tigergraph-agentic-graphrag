@@ -30,10 +30,19 @@ class PipelineResult(BaseModel):
 class Timer:
     def __enter__(self):
         self.t0 = time.perf_counter()
+        self._ms = None
         return self
 
     def __exit__(self, *a):
-        self.ms = int((time.perf_counter() - self.t0) * 1000)
+        self._ms = int((time.perf_counter() - self.t0) * 1000)
+
+    @property
+    def ms(self) -> int:
+        # Results are often assembled inside the context manager. Report elapsed time
+        # there too, then freeze the value on exit.
+        if self._ms is not None:
+            return self._ms
+        return int((time.perf_counter() - self.t0) * 1000)
 
 
 def event_facts(e: EventRecord) -> str:

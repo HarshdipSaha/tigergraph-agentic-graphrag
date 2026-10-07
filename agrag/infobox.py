@@ -8,7 +8,8 @@ from agrag.corpus import Doc
 
 EVENT_HEADER = "[Infobox Olympic event]"
 TITLE_RE = re.compile(
-    r"^(?P<sport>.+?) at the (?P<year>\d{4}) (?P<season>Summer|Winter) Olympics(?: [–—-] (?P<event>.+))?$"
+    r"^(?P<sport>.+?) at the (?P<year>\d{4}) (?P<season>Summer|Winter) Olympics"
+    r"(?: (?:(?:[-\u2010-\u2015\u2212\ufffd])|(?:\u00e2\u20ac[\u201c\u2013\u2014])) (?P<event>.+))?$"
 )
 INT_RE = re.compile(r"^\d+$")
 
@@ -69,8 +70,19 @@ class EventRecord:
 
 
 def event_from_doc(doc: Doc) -> Optional[EventRecord]:
-    header, ib = parse_infobox(doc.text)
-    if header != EVENT_HEADER:
+    # Some source pages have a general tournament infobox before their
+    # Olympic-specific event infobox. Keep parse_infobox()'s first-block
+    # behavior for callers, but scan for the event block here.
+    ib: Optional[dict[str, str]] = None
+    lines = doc.text.splitlines()
+    for index, line in enumerate(lines):
+        if line.strip() != EVENT_HEADER:
+            continue
+        header, fields = parse_infobox("\n".join(lines[index:]))
+        if header == EVENT_HEADER:
+            ib = fields
+            break
+    if ib is None:
         return None
     parsed = parse_title(doc.title)
     if parsed is None:
@@ -84,7 +96,7 @@ def event_from_doc(doc: Doc) -> Optional[EventRecord]:
         season=season,
         event_name=event_name,
         venue=ib.get("venue", ""),
-        date_text=ib.get("date", ""),
+        date_text=ib.get("date") or ib.get("dates", ""),
         competitors=parse_int(ib.get("competitors")),
         competitors_raw=ib.get("competitors", ""),
         nations=parse_int(ib.get("nations")),

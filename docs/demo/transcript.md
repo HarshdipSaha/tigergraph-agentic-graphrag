@@ -1,10 +1,10 @@
 # Demo Voiceover Transcript
 
-85.6 seconds, 6 scenes. Generated offline via Windows SAPI (`docs/demo/tts.py`) — no API keys, no network calls, no third-party service.
+Updated for the October 7, 2026 planner/template measurements. The existing hosted Loom recording predates this update; use these scenes and `final-demo.mp4` for the refreshed local demo.
 
-1. **(0:00)** Investigation Certificates for Agentic GraphRAG. Built for the TigerGraph Agentic GraphRAG Hackathon.
-2. **(0:09)** Every answer here ships a certificate. Proof, straight from the graph's own structure, that the evidence is as complete as the question needs. Not just that the answer looks right.
-3. **(0:23)** On one hundred real questions against a live TigerGraph database: plain RAG scored twenty five percent. GraphRAG, forty three. Our agentic pipeline: ninety nine percent, at forty two tokens per answer.
-4. **(0:41)** Here's why. Some questions need every matching event, up to forty three documents. No top-k search can retrieve that many. Both baselines score zero. Our pipeline runs a deterministic count on the graph instead, and gets every one right, for free.
-5. **(1:02)** And when the agent does need the language model, say, to break a tie, the certificate says so honestly, instead of hiding it.
-6. **(1:12)** Sixty five tests. Reconciled against the live graph. Open source on GitHub. Investigation Certificates for Agentic GraphRAG.
+1. **(0:00)** Investigation Certificates for Agentic GraphRAG, built with TigerGraph.
+2. **(0:09)** Each answer includes a certificate that compares the graph evidence with the evidence needed to answer. The certificate describes evidence completeness; a correct answer and a complete evidence set are separate checks.
+3. **(0:23)** On the same one hundred public questions and refreshed TigerGraph graph, template routing matched ninety nine answers. The LLM planner matched ninety eight. The planner chose a graph tool for eighty six questions.
+4. **(0:40)** The planner asks the model to choose a typed tool and arguments. Python validates the action, runs the graph query, and checks the returned evidence. Exhaustive aggregation and superlative results matched all thirty one public answers.
+5. **(0:57)** ExCeL on 30 July has three exact-date Events, across fencing and judo. The question gives no sport, so the planner returns no answer and the certificate says unverified. It does not treat a model guess as proof.
+6. **(1:14)** The refreshed graph contains 2,187 Event records, matching the parsed corpus. `eval-001` now resolves to the exact tennis Event. The offline suite contains 120 passing tests; the report records the live integration result separately.

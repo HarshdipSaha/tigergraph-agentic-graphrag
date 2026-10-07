@@ -9,10 +9,10 @@
 [![TigerGraph](https://img.shields.io/badge/TigerGraph-Savanna%20%2B%20GSQL-f7941e?style=flat-square)](agrag/graph/queries.gsql)
 [![TypeSafe Jev](https://img.shields.io/badge/Decision%20Model-TypeSafe%20Jev%20System%20One-blue?style=flat-square)](agrag/decision.py)
 [![Accuracy](https://img.shields.io/badge/accuracy-99%25%20vs%2043%25-3fb950?style=flat-square)](results/summary.json)
-[![Tests](https://img.shields.io/badge/tests-65%20offline-3fb950?style=flat-square)](tests/)
+[![Tests](https://img.shields.io/badge/tests-120%20offline-3fb950?style=flat-square)](tests/)
 [![Hackathon](https://img.shields.io/badge/TigerGraph-Agentic%20GraphRAG%20Hackathon-0d1117?style=flat-square)](docs/hackathon-brief.md)
 
-**[How it works](#how-it-works)** · **[Architecture](#architecture)** · **[The benchmark](#the-benchmark)** · **[JEV addition](#-jev-addition)** · **[The certificate](#the-certificate)** · **[Try it](#try-it)**
+**[How it works](#how-it-works)** · **[Architecture](#architecture)** · **[The benchmark](#the-benchmark)** · **[Reviewer feedback](#-post-submission-tigergraph-developer-feedback)** · **[JEV addition](#-jev-addition)** · **[The certificate](#the-certificate)** · **[Try it](#try-it)**
 
 </div>
 
@@ -159,6 +159,32 @@ That's **~120× fewer tokens** and **~38× faster** than the GraphRAG baseline, 
 
 The single agentic miss is honest and instructive: `pub-060`, a date+venue tie among 37 candidate events at ExCeL. Jev System One made the pick (conf=0.90) and chose the wrong event, so Jev did not fix this case; the LLM guessed wrong here in the earlier run too. Its certificate reports `pass_with_llm_recovery`, not a clean deterministic `pass` — because the certificate measures *"was the evidence complete,"* not *"was the answer right."* Those are deliberately different axes, and this is exactly where they diverge.
 
+## 🧭 Post-submission: TigerGraph developer feedback
+
+After submission, a TigerGraph developer reviewed the project and suggested two improvements:
+
+> - **Let the LLM plan more.** Right now templates plan and the LLM mostly handles recovery. Making the templates tools the agent chooses would show the agentic side better.
+> - **Tighten the relaxed venue match.** It can pick an event from a different sport at the same venue — filtering by date and sport would fix your remaining miss.
+
+Both are implemented. The headline numbers above are unchanged and still come from the submitted run (`results/summary.json`). This section reports the follow-up separately.
+
+**1. LLM planner mode** ([`agrag/planner.py`](agrag/planner.py), `--agent-mode planner`). The five graph queries are now tools the LLM chooses between: `lookup_nations`, `resolve_multi_hop`, `temporal_chain`, `aggregation_scan`, `superlative_scan`. The LLM returns a JSON action (tool + arguments). Python checks that every argument is grounded in the question before running it. A malformed or ungrounded action gets one retry with the error as feedback, then falls back visibly to the template tool. The certificate records `planning_mode`, `selected_tool`, `planner_status` and `planner_grounding` for every answer.
+
+**2. Venue integrity** ([`agrag/tools.py`](agrag/tools.py) `resolve_multi_hop`). Exact venue matches are used first; the relaxed alias match runs only when there are none. Candidates are then filtered by date (exact range > same day > day within range) and, when the question names a sport, by sport. If a small tie still remains (2–3 events the question cannot tell apart), the model picks one and the certificate stays `unverified` instead of claiming a pass. The graph was also refreshed with 25 Event records the parser had previously skipped (2,187 Event IDs, matching the parsed corpus).
+
+**Results** on the refreshed graph, 100 public questions, same Groq model (October 7, 2026):
+
+| Agentic mode | Accuracy | Avg tokens | Avg latency | Tools chosen by the LLM | Unverified ties |
+|---|---:|---:|---:|---:|---:|
+| Template (submitted mode) | 99% | 14.3 | 0.41 s | 0 | 2 |
+| **LLM planner** | **99%** | 1,038.4 | 1.45 s | 87 | 2 |
+
+- **Same accuracy, LLM in charge of planning.** The planner chose and grounded a graph tool for 87 of 100 questions; the rest used the visible template fallback. Its only miss is `pub-060`, the same three-way ExCeL tie both modes miss.
+- **The cross-sport miss is fixed.** Hidden `eval-001` ("event held at Olympic Tennis Centre on 15 to 22 August 2004") was answered with a rowing event in the submitted run, because the relaxed venue match crossed sports. With the date filter it now resolves uniquely to `Q942805`, women's doubles tennis: **Li Ting / Sun Tiantian**, certificate `pass`. All other hidden answers are unchanged. Hidden labels are not published, so no hidden accuracy is claimed.
+- **The cost is real.** Letting the LLM plan costs ~70× the tokens and ~3.5× the latency of fixed templates for the same public accuracy. Template mode stays the default; planner mode is opt-in.
+
+Raw outputs: [`results/agentic_planner_public.jsonl`](results/agentic_planner_public.jsonl), [`results/agentic_planner_hidden.jsonl`](results/agentic_planner_hidden.jsonl), [`results/agentic_template_public.jsonl`](results/agentic_template_public.jsonl); summaries: [`results/summary_agentic_planner.json`](results/summary_agentic_planner.json), [`results/summary_agentic_template.json`](results/summary_agentic_template.json).
+
 ## The certificate
 
 ```json
@@ -182,7 +208,7 @@ The single agentic miss is honest and instructive: `pub-060`, a date+venue tie a
 
 ```bash
 pip install -r requirements.txt && pip install -e .
-python -m pytest          # 65 tests, in-memory backend, no TigerGraph needed
+python -m pytest --ignore=tests/integration   # 120 tests, in-memory backend, no TigerGraph needed
 ```
 
 Point it at a live graph by copying `.env.example` to `.env` and filling in `TG_HOST` / `TG_GRAPH` / `TG_SECRET` (a TigerGraph Savanna workspace), `GROQ_API_KEY` (free, no card), and optionally `JEV_API_KEY`. Then:
@@ -194,7 +220,8 @@ python scripts/reconcile.py --backend tigergraph
 
 python -m agrag.eval.run --pipeline rag       --backend tigergraph
 python -m agrag.eval.run --pipeline graphrag  --backend tigergraph
-python -m agrag.eval.run --pipeline agentic   --backend tigergraph
+python -m agrag.eval.run --pipeline agentic   --backend tigergraph --out results/agentic_public.jsonl   # template mode (default)
+python -m agrag.eval.run --pipeline agentic   --backend tigergraph --agent-mode planner   # LLM chooses the tool
 python -m agrag.eval.report
 
 streamlit run dashboard/app.py                  # side-by-side comparison (also live: https://investigation-certificates.streamlit.app/)

@@ -49,3 +49,9 @@ class Certificate(BaseModel):
     tokens: TokenUsage
     latency_ms: int
     stop_reason: str
+    planning_mode: Literal["template", "planner"] = "template"
+    selected_tool: str | None = None
+    planner_status: str = "not_used"
+    planner_grounding: str = "not_applicable"
+    selected_doc_id: str | None = None
+    venue_resolution: dict[str, Any] = Field(default_factory=dict)

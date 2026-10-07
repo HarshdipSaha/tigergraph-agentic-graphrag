@@ -1,26 +1,21 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{width:1920px;height:1080px;background:#0b0f18;font-family:'Segoe UI',Arial,sans-serif;
-       color:#f5f7fa;display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden;}
-  h1{font-size:56px;font-weight:700;margin-top:70px;}
-  .sub{font-size:28px;color:#8fa0bd;margin-top:12px;margin-bottom:36px;}
-  .code{width:1500px;background:#11162280;border:2px solid #232d42;border-radius:20px;padding:44px 56px;
-        font-family:Consolas,'Cascadia Code',monospace;font-size:27px;line-height:1.75;box-shadow:0 30px 80px rgba(0,0,0,0.5);}
-  .k{color:#7fb3ff;} .s{color:#ffd8b0;} .n{color:#4ade80;} .flag{color:#ffb347;font-weight:700;}
-  .caption{position:absolute;bottom:0;left:0;right:0;background:rgba(10,13,20,0.92);
-           padding:36px 90px;font-size:34px;line-height:1.4;color:#e8ecf3;border-top:2px solid #ff8a3d55;}
-</style></head>
-<body>
-  <h1>The certificate doesn't hide the truth</h1>
-  <div class="sub">A real answer from the live benchmark — three-way tied fencing events, ExCeL, London 2012</div>
+  body{width:1920px;height:1080px;background:#0b0f18;font-family:'Segoe UI',Arial,sans-serif;color:#f5f7fa;display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden;}
+  h1{font-size:56px;font-weight:700;margin-top:76px;}
+  .sub{font-size:28px;color:#8fa0bd;margin-top:14px;margin-bottom:34px;}
+  .code{width:1500px;background:#111622;border:2px solid #34415a;border-radius:20px;padding:40px 56px;font-family:Consolas,'Cascadia Code',monospace;font-size:27px;line-height:1.72;box-shadow:0 30px 80px rgba(0,0,0,.5);}
+  .k{color:#7fb3ff}.s{color:#ffd8b0}.n{color:#4ade80}.flag{color:#ffb347;font-weight:700}
+  .caption{position:absolute;bottom:0;left:0;right:0;background:rgba(10,13,20,.92);padding:36px 90px;font-size:34px;line-height:1.4;color:#e8ecf3;border-top:2px solid #ff8a3d55;}
+</style></head><body>
+  <h1>The certificate keeps the tie visible</h1>
+  <div class="sub">ExCeL Exhibition Centre | 30 July 2012 | fencing and judo candidates</div>
   <div class="code">{<br>
 &nbsp;&nbsp;<span class="k">"qid"</span>: <span class="s">"pub-060"</span>,<br>
-&nbsp;&nbsp;<span class="k">"completeness_class"</span>: <span class="s">"existential"</span>,<br>
-&nbsp;&nbsp;<span class="k">"retrieval_mode"</span>: <span class="s">"venue_date_traversal"</span>,<br>
-&nbsp;&nbsp;<span class="k">"structural_bound"</span>: <span class="n">37</span>,&nbsp;&nbsp;<span class="k">"evidence_set_size"</span>: <span class="n">37</span>,<br>
-&nbsp;&nbsp;<span class="k">"completeness_check"</span>: <span class="flag">"pass_with_llm_recovery"</span>,<br>
-&nbsp;&nbsp;<span class="k">"stop_reason"</span>: <span class="s">"structural_bound_met"</span><br>
+&nbsp;&nbsp;<span class="k">"predicate"</span>: <span class="s">"ExCeL + 30 July + 2012"</span>,<br>
+&nbsp;&nbsp;<span class="k">"raw_candidate_count"</span>: <span class="n">37</span>,&nbsp;&nbsp;<span class="k">"eligible_count"</span>: <span class="n">3</span>,<br>
+&nbsp;&nbsp;<span class="k">"eligible_event_ids"</span>: [<span class="s">"Q1064016"</span>, <span class="s">"Q1005551"</span>, <span class="s">"Q1156695"</span>],<br>
+&nbsp;&nbsp;<span class="k">"answer"</span>: <span class="s">null</span>,&nbsp;&nbsp;<span class="k">"completeness_check"</span>: <span class="flag">"unverified"</span><br>
 }</div>
-  <div class="caption">And when the agent does need the language model — say, to break a tie — the certificate says so honestly, instead of hiding it.</div>
+  <div class="caption">The question does not name a sport. Three exact-date Events remain, so the model picks one and the certificate stays unverified instead of claiming a pass.</div>
 </body></html>

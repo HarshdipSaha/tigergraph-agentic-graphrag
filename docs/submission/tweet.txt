@@ -1,0 +1,1 @@
+Took a TigerGraph developer's feedback: the LLM now picks among five TigerGraph tools, and venue matches filter by date and sport. Public set: 99/100 either way, but planning costs 1,038 tokens/answer vs 14 for fixed routing. Fixed a cross-sport hidden-set miss. #TigerGraph #RAG

@@ -36,7 +36,15 @@ class LLMResponse:
 
 
 class LLM(Protocol):
-    def complete(self, system: str, user: str) -> LLMResponse: ...
+    def complete(self, system: str, user: str, *, timeout_s: float | None = None) -> LLMResponse: ...
+
+
+class LLMTimeoutError(TimeoutError):
+    """A completion exceeded its caller-supplied wall-clock budget."""
+
+
+class GroqKeyPoolExhausted(RuntimeError):
+    """Every configured same-organization Groq project key is currently unavailable."""
 
 
 class FakeLLM:
@@ -47,7 +55,7 @@ class FakeLLM:
         self.calls = 0
         self.prompts: list[tuple[str, str]] = []
 
-    def complete(self, system: str, user: str) -> LLMResponse:
+    def complete(self, system: str, user: str, *, timeout_s: float | None = None) -> LLMResponse:
         if not self._answers:
             raise RuntimeError("FakeLLM script exhausted")
         self.calls += 1
@@ -57,27 +65,25 @@ class FakeLLM:
 
 
 class GroqLLM:
-    """Thin wrapper over the Groq chat-completions API (OpenAI-compatible). Free tier, no card required.
-    Default model is settings.model; sign up at https://console.groq.com/keys.
+    """Groq chat-completions client with same-organization project-key failover.
 
-    The free tier has two rate-limit layers, both hit in practice on this project: a tokens-per-minute cap
-    (observed: 8,000 TPM) that a handful of large-context requests can exceed within seconds, and a
-    tokens-per-day cap (observed: 200,000 TPD, per model, per account) that a full ~150-question eval run
-    can exceed regardless of pacing. complete() handles both: a TPM 429 is waited out on the same key using
-    Groq's own stated wait ("Please try again in 3.89s"); a TPD 429 rotates immediately to the next key in
-    GROQ_API_KEY (settings.groq_api_keys — several comma-separated keys from separate free-tier accounts),
-    since waiting out a whole day is not practical. Rotation state persists to data/.groq_key_state.json so
-    each separate `python -m agrag.eval.run` process (its own Python process, hence its own GroqLLM instance)
-    resumes from the last known-good key instead of blindly restarting at key 0."""
+    Comma-separated keys can rotate across projects within one organization. Project-level limits can differ,
+    while organization-level limits remain a shared ceiling. When every configured key is rate limited this
+    wrapper raises a generic pool-exhausted error instead of sleeping indefinitely. Rotation state persists
+    to data/.groq_key_state.json so a new eval process resumes at the last active key.
+
+    `timeout_s` applies one monotonic deadline to SDK I/O and rate-limit handling. Each HTTP request receives
+    the remaining time via the SDK's `with_options(timeout=...)` support.
+    """
 
     def __init__(self, model: str | None = None, max_tokens: int | None = None, max_retries: int = 8):
         from groq import Groq  # lazy import so tests never need the SDK configured
 
         self.keys = settings.groq_api_keys or [settings.groq_api_key or None]
         state = _load_key_state()
-        self.exhausted_until: dict[int, float] = {int(k): v for k, v in state.get("exhausted_until", {}).items()}
+        self.exhausted_until: dict[int, float] = {int(k): float(v) for k, v in state.get("exhausted_until", {}).items()}
         self.idx = state.get("idx", 0) % len(self.keys)
-        self._client = Groq(api_key=self.keys[self.idx], max_retries=0)  # we retry/rotate ourselves, deliberately
+        self._client = Groq(api_key=self.keys[self.idx], max_retries=0)
         self.model = model or settings.model
         self.max_tokens = max_tokens or settings.max_tokens
         self.max_retries = max_retries
@@ -99,45 +105,98 @@ class GroqLLM:
                 return cand
         return None
 
-    def complete(self, system: str, user: str) -> LLMResponse:
+    @staticmethod
+    def _retry_after_seconds(error) -> float | None:
+        response = getattr(error, "response", None)
+        headers = getattr(response, "headers", {}) or {}
+        value = headers.get("retry-after") if hasattr(headers, "get") else None
+        if value is not None:
+            try:
+                return max(0.0, float(value))
+            except (TypeError, ValueError):
+                pass
+        match = _RETRY_AFTER_RE.search(str(error))
+        return float(match.group(1)) if match else None
+
+    @staticmethod
+    def _is_daily_limit(error) -> bool:
+        message = str(error).lower()
+        return any(token in message for token in ("tokens per day", " tpd", "requests per day", " rpd"))
+
+    @staticmethod
+    def _remaining(deadline: float | None) -> float | None:
+        if deadline is None:
+            return None
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise LLMTimeoutError("LLM completion timed out")
+        return remaining
+
+    def complete(self, system: str, user: str, *, timeout_s: float | None = None) -> LLMResponse:
         import groq
 
+        if timeout_s is not None and timeout_s <= 0:
+            raise ValueError("timeout_s must be positive")
+        deadline = time.monotonic() + timeout_s if timeout_s is not None else None
         attempts = 0
         while True:
+            remaining = self._remaining(deadline)
+            now = time.time()
+            if self.exhausted_until.get(self.idx, 0.0) > now:
+                nxt = self._next_available_key(now)
+                if nxt is None:
+                    raise GroqKeyPoolExhausted("all configured Groq project keys are rate limited")
+                self._switch_key(nxt)
             try:
-                resp = self._client.chat.completions.create(
+                client = self._client.with_options(timeout=remaining) if remaining is not None else self._client
+                resp = client.chat.completions.create(
                     model=self.model,
                     max_tokens=self.max_tokens,
                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
                 )
                 text = (resp.choices[0].message.content or "").strip()
                 return LLMResponse(text=text, input_tokens=resp.usage.prompt_tokens, output_tokens=resp.usage.completion_tokens)
-            except groq.RateLimitError as e:
-                msg = str(e)
-                m = _RETRY_AFTER_RE.search(msg)
+            except groq.RateLimitError as error:
                 now = time.time()
-                is_daily = "tokens per day" in msg.lower() or " tpd" in msg.lower()
-                wait = float(m.group(1)) + 1.0 if m else (3600.0 if is_daily else 5.0)
-                if is_daily and len(self.keys) > 1:
-                    self.exhausted_until[self.idx] = now + wait
-                    self._persist()
-                    nxt = self._next_available_key(now)
-                    if nxt is not None:
-                        self._switch_key(nxt)
-                        continue  # retry immediately on the fresh key, no sleep
-                    wait_for = max(1.0, min(self.exhausted_until.values()) - now)
-                    time.sleep(wait_for)
-                    self._switch_key(min(self.exhausted_until, key=self.exhausted_until.get))
+                retry_after = self._retry_after_seconds(error)
+                wait = (retry_after + 1.0) if retry_after is not None else (86_400.0 if self._is_daily_limit(error) else 60.0)
+                self.exhausted_until[self.idx] = now + wait
+                self._persist()
+                nxt = self._next_available_key(now)
+                if nxt is not None and len(self.keys) > 1:
+                    self._switch_key(nxt)
+                    attempts = 0
                     continue
+                if all(self.exhausted_until.get(index, 0.0) > now for index in range(len(self.keys))):
+                    raise GroqKeyPoolExhausted("all configured Groq project keys are rate limited") from None
                 attempts += 1
                 if attempts > self.max_retries:
                     raise
-                time.sleep(wait)
+                remaining = self._remaining(deadline)
+                pause = min(wait, remaining) if remaining is not None else wait
+                if pause <= 0:
+                    raise LLMTimeoutError("LLM completion timed out") from None
+                time.sleep(pause)
+            except groq.AuthenticationError:
+                # A revoked or malformed project key must not prevent trying the other
+                # configured keys. Same-organization rotation stays under the shared cap.
+                self.exhausted_until[self.idx] = time.time() + 86_400.0
+                self._persist()
+                nxt = self._next_available_key(time.time())
+                if nxt is None:
+                    raise GroqKeyPoolExhausted("all configured Groq project keys are unavailable") from None
+                self._switch_key(nxt)
+                attempts += 1
+                if attempts >= len(self.keys):
+                    raise GroqKeyPoolExhausted("all configured Groq project keys are unavailable") from None
+            except groq.APITimeoutError:
+                if deadline is not None:
+                    raise LLMTimeoutError("LLM completion timed out") from None
+                raise
 
 
 class AnthropicLLM:
-    """Thin wrapper over the Anthropic Messages API, for anyone who prefers Claude over the free Groq default.
-    Model defaults to settings.model, so override AGRAG_MODEL to a Claude model id when using this class."""
+    """Thin wrapper over the Anthropic Messages API."""
 
     def __init__(self, model: str | None = None, max_tokens: int | None = None):
         import anthropic  # lazy import so tests never need the SDK configured
@@ -146,8 +205,9 @@ class AnthropicLLM:
         self.model = model or settings.model
         self.max_tokens = max_tokens or settings.max_tokens
 
-    def complete(self, system: str, user: str) -> LLMResponse:
-        resp = self._client.messages.create(
+    def complete(self, system: str, user: str, *, timeout_s: float | None = None) -> LLMResponse:
+        client = self._client.with_options(timeout=timeout_s) if timeout_s is not None else self._client
+        resp = client.messages.create(
             model=self.model,
             max_tokens=self.max_tokens,
             system=system,

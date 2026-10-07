@@ -1,32 +1,24 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{width:1920px;height:1080px;background:radial-gradient(circle at 70% 15%,#1a2233 0%,#0b0f18 60%);
-       font-family:'Segoe UI',Arial,sans-serif;color:#f5f7fa;display:flex;flex-direction:column;
-       align-items:center;position:relative;overflow:hidden;}
-  h1{font-size:58px;font-weight:700;margin-top:80px;}
-  .sub{font-size:30px;color:#8fa0bd;margin-top:14px;margin-bottom:70px;}
-  .row{display:flex;gap:56px;}
-  .card{width:460px;height:520px;border-radius:28px;background:#131a28;border:2px solid #232d42;
-        display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;position:relative;}
-  .card.win{background:linear-gradient(160deg,#2a1a0a,#131a28 55%);border:2px solid #ff8a3d;box-shadow:0 0 90px rgba(255,138,61,0.35);}
-  .name{font-size:34px;color:#9fb0cc;letter-spacing:1px;text-transform:uppercase;}
-  .card.win .name{color:#ffcda0;}
-  .pct{font-size:150px;font-weight:800;margin-top:14px;}
-  .card.win .pct{color:#ff8a3d;}
-  .tok{font-size:26px;color:#7f8caa;margin-top:22px;}
-  .card.win .tok{color:#ffd8b0;}
-  .crown{position:absolute;top:-28px;font-size:30px;color:#ff8a3d;font-weight:700;letter-spacing:2px;}
-  .caption{position:absolute;bottom:0;left:0;right:0;background:rgba(10,13,20,0.92);
-           padding:36px 90px;font-size:34px;line-height:1.4;color:#e8ecf3;border-top:2px solid #ff8a3d55;}
-</style></head>
-<body>
-  <h1>Same 100 questions. Three pipelines.</h1>
-  <div class="sub">Live TigerGraph &nbsp;·&nbsp; Live Groq &nbsp;·&nbsp; Public benchmark set</div>
+  body{width:1920px;height:1080px;background:radial-gradient(circle at 70% 15%,#1a2233 0%,#0b0f18 60%);font-family:'Segoe UI',Arial,sans-serif;color:#f5f7fa;display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden;}
+  h1{font-size:58px;font-weight:700;margin-top:86px;}
+  .sub{font-size:30px;color:#8fa0bd;margin-top:18px;margin-bottom:75px;}
+  .row{display:flex;gap:70px;}
+  .card{width:650px;height:490px;border-radius:28px;background:#131a28;border:2px solid #34415a;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;position:relative;}
+  .card.plan{border-color:#ff8a3d;box-shadow:0 0 65px rgba(255,138,61,.2);}
+  .name{font-size:38px;color:#9fb0cc;letter-spacing:1px;text-transform:uppercase;}
+  .pct{font-size:138px;font-weight:800;margin-top:14px;color:#b7c5dc;}
+  .card.plan .pct{color:#ff8a3d;}
+  .tok{font-size:29px;color:#c7d2e3;margin-top:22px;}
+  .lat{font-size:25px;color:#7f8caa;margin-top:10px;}
+  .caption{position:absolute;bottom:0;left:0;right:0;background:rgba(10,13,20,.92);padding:36px 90px;font-size:34px;line-height:1.4;color:#e8ecf3;border-top:2px solid #ff8a3d55;}
+</style></head><body>
+  <h1>Same 100 questions. Two agentic routes.</h1>
+  <div class="sub">Refreshed TigerGraph &nbsp;?&nbsp; Same public set &nbsp;?&nbsp; October 7, 2026</div>
   <div class="row">
-    <div class="card"><div class="name">RAG</div><div class="pct">25%</div><div class="tok">1,389 tokens / answer</div></div>
-    <div class="card"><div class="name">GraphRAG</div><div class="pct">43%</div><div class="tok">2,203 tokens / answer</div></div>
-    <div class="card win"><div class="crown">★ AGENTIC ★</div><div class="name">Agentic</div><div class="pct">99%</div><div class="tok">42 tokens / answer</div></div>
+    <div class="card"><div class="name">Template</div><div class="pct">99%</div><div class="tok">14.3 mean tokens</div><div class="lat">0.414 s mean latency</div></div>
+    <div class="card plan"><div class="name">LLM Planner</div><div class="pct">99%</div><div class="tok">1,038.4 mean tokens</div><div class="lat">1.447 s mean latency | 87 selected tools</div></div>
   </div>
-  <div class="caption">On one hundred real questions against a live TigerGraph database: plain RAG scored twenty five percent, GraphRAG forty three. Our agentic pipeline — ninety nine percent, at forty two tokens per answer.</div>
+  <div class="caption">The planner makes tool selection visible. In this run, template mode scored one point higher and used about 80x fewer tokens. The planner is not yet more accurate or efficient.</div>
 </body></html>

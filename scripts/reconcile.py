@@ -11,7 +11,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
+
+# Prefer this checkout when the script is run inside an isolated Git worktree.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from agrag.backend import GraphBackend
 from agrag.normalize import match_flags

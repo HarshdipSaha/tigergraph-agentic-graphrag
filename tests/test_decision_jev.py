@@ -29,7 +29,7 @@ def test_agentic_pipeline_uses_decision_model_disambiguation(mini_corpus_path):
     b = LocalBackend.from_docs(load_docs(mini_corpus_path), embedder=FakeEmbedder(dim=8))
     llm = FakeLLM([])
     mock_dec = MockDecisionModel(default_choice="Q3")
-    pipe = AgenticPipeline(backend=b, llm=llm, decision_model=mock_dec)
+    pipe = AgenticPipeline(backend=b, llm=llm, decision_model=mock_dec, agent_mode="template")
 
     q = Question("t1", "Who won the gold medal in the event held at Alpensia Biathlon Centre on February 2018?", "multi_hop", None, ())
     r = pipe.answer(q)
@@ -42,7 +42,7 @@ def test_agentic_pipeline_unrouted_decision_model(mini_corpus_path):
     b = LocalBackend.from_docs(load_docs(mini_corpus_path), embedder=FakeEmbedder(dim=8))
     llm = FakeLLM(["Tom Hanks"])
     mock_dec = MockDecisionModel(default_choice="lookup")
-    pipe = AgenticPipeline(backend=b, llm=llm, decision_model=mock_dec)
+    pipe = AgenticPipeline(backend=b, llm=llm, decision_model=mock_dec, agent_mode="template")
 
     q = Question("t2", "Who starred in Forrest Gump?", "", None, ())
     r = pipe.answer(q)

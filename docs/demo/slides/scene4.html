@@ -1,31 +1,18 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{width:1920px;height:1080px;background:#0b0f18;font-family:'Segoe UI',Arial,sans-serif;
-       color:#f5f7fa;display:flex;flex-direction:column;align-items:center;justify-content:center;
-       position:relative;overflow:hidden;}
-  h1{font-size:52px;font-weight:700;color:#ffffff;position:absolute;top:80px;}
-  .zero2hero{display:flex;align-items:center;gap:70px;margin-top:-20px;}
-  .num{font-size:220px;font-weight:800;}
-  .num.zero{color:#ff5a5a;}
-  .arrow{font-size:90px;color:#5a6a8a;}
-  .num.hero{color:#4ade80;}
-  .labelrow{display:flex;gap:70px;margin-top:6px;}
-  .labelrow div{width:420px;text-align:center;font-size:30px;color:#9fb0cc;}
-  .why{margin-top:70px;font-size:34px;color:#c7d2e3;text-align:center;max-width:1400px;line-height:1.5;}
+  body{width:1920px;height:1080px;background:#0b0f18;font-family:'Segoe UI',Arial,sans-serif;color:#f5f7fa;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+  h1{font-size:64px;font-weight:700;color:#fff;position:absolute;top:82px;}
+  .row{display:flex;gap:70px;margin-top:45px;}
+  .box{width:650px;height:410px;border:2px solid #34415a;background:#131a28;border-radius:30px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .number{font-size:190px;font-weight:800;color:#4ade80;}
+  .label{font-size:36px;color:#c7d2e3;margin-top:10px;}
+  .why{margin-top:55px;font-size:34px;color:#9fb0cc;text-align:center;max-width:1420px;line-height:1.5;}
   .why b{color:#ffcda0;}
-  .qtypes{margin-top:30px;font-size:26px;color:#7f8caa;}
-  .caption{position:absolute;bottom:0;left:0;right:0;background:rgba(10,13,20,0.92);
-           padding:36px 90px;font-size:34px;line-height:1.4;color:#e8ecf3;border-top:2px solid #ff8a3d55;}
-</style></head>
-<body>
-  <h1>aggregation &amp; superlative questions</h1>
-  <div class="zero2hero">
-    <div class="num zero">0%</div>
-    <div class="arrow">→</div>
-    <div class="num hero">100%</div>
-  </div>
-  <div class="labelrow"><div>RAG and GraphRAG, both baselines</div><div>Agentic — deterministic count on the graph</div></div>
-  <div class="why">These questions need <b>every</b> matching event — up to <b>43 documents</b>. No top-k similarity search retrieves that many. So we don't search: we ask TigerGraph to <b>count</b>.</div>
-  <div class="caption">Here's why. Some questions need every matching event, up to forty three documents. No top-k search can retrieve that many. Both baselines score zero. Our pipeline runs a deterministic count on the graph instead — and gets every one right, for free.</div>
+  .caption{position:absolute;bottom:0;left:0;right:0;background:rgba(10,13,20,.92);padding:36px 90px;font-size:34px;line-height:1.4;color:#e8ecf3;border-top:2px solid #ff8a3d55;}
+</style></head><body>
+  <h1>Deterministic scans still do the counting</h1>
+  <div class="row"><div class="box"><div class="number">21/21</div><div class="label">planner aggregation answers matched</div></div><div class="box"><div class="number">10/10</div><div class="label">planner superlative answers matched</div></div></div>
+  <div class="why">The LLM selects an allowlisted tool. <b>Python runs the graph query and checks completeness.</b> The model does not calculate the exhaustive answer set.</div>
+  <div class="caption">For aggregation and superlative questions, the refreshed planner run matched all 31 public answers while inspecting the graph evidence needed for each result.</div>
 </body></html>

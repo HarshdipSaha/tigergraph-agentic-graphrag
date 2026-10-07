@@ -1,0 +1,52 @@
+{
+  "agentic": {
+    "aggregation": {
+      "n": 21,
+      "accuracy": 1.0,
+      "avg_coverage": 1.0,
+      "avg_tokens": 705.4761904761905,
+      "avg_latency_ms": 1042.6190476190477,
+      "cert_pass_rate": 1.0
+    },
+    "_all": {
+      "n": 100,
+      "accuracy": 0.99,
+      "avg_coverage": 1.0,
+      "avg_tokens": 1038.39,
+      "avg_latency_ms": 1447.09,
+      "cert_pass_rate": 0.98
+    },
+    "temporal": {
+      "n": 22,
+      "accuracy": 1.0,
+      "avg_coverage": 1.0,
+      "avg_tokens": 1347.909090909091,
+      "avg_latency_ms": 2004.5,
+      "cert_pass_rate": 1.0
+    },
+    "superlative": {
+      "n": 10,
+      "accuracy": 1.0,
+      "avg_coverage": 1.0,
+      "avg_tokens": 777.4,
+      "avg_latency_ms": 974.8,
+      "cert_pass_rate": 1.0
+    },
+    "multi_hop": {
+      "n": 28,
+      "accuracy": 0.9642857142857143,
+      "avg_coverage": 1.0,
+      "avg_tokens": 1372.6785714285713,
+      "avg_latency_ms": 1808.5714285714287,
+      "cert_pass_rate": 0.9285714285714286
+    },
+    "lookup": {
+      "n": 19,
+      "accuracy": 1.0,
+      "avg_coverage": 1.0,
+      "avg_tokens": 692.6842105263158,
+      "avg_latency_ms": 964.578947368421,
+      "cert_pass_rate": 1.0
+    }
+  }
+}

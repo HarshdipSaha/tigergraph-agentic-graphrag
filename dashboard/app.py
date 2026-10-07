@@ -13,7 +13,44 @@ from agrag.eval.report import load_rows
 from agrag.eval.score import summarize
 
 st.set_page_config(page_title="Investigation Certificates", layout="wide")
-st.title("RAG vs GraphRAG vs Agentic GraphRAG — Olympic corpus benchmark")
+st.title("Olympic retrieval benchmark")
+
+root = Path(__file__).resolve().parents[1]
+current_results = []
+for mode, filename in (("planner", "agentic_planner_public.jsonl"), ("template", "agentic_template_public.jsonl")):
+    result_path = root / "results" / filename
+    if not result_path.exists():
+        continue
+    with result_path.open(encoding="utf-8") as stream:
+        for line in stream:
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            certificate = row["result"]["certificate"]
+            current_results.append({
+                **row["score"],
+                "mode": mode,
+                "selected_tool": certificate.get("selected_tool"),
+                "planner_status": certificate.get("planner_status"),
+            })
+
+if current_results:
+    current = pd.DataFrame(current_results)
+    st.header("Current agentic modes on the refreshed graph")
+    st.caption("Planner and template runs use the October 7 Event graph. The three-pipeline charts below use the historical September baseline.")
+    current_summary = current.groupby("mode").agg(
+        accuracy=("normalized", "mean"),
+        avg_tokens=("tokens_total", "mean"),
+        avg_latency_ms=("latency_ms", "mean"),
+        unverified=("cert_check", lambda checks: int((checks == "unverified").sum())),
+    )
+    st.dataframe(current_summary.style.format({
+        "accuracy": "{:.1%}", "avg_tokens": "{:.1f}", "avg_latency_ms": "{:.0f}",
+    }))
+    accuracy = current.pivot_table(index="qtype", columns="mode", values="normalized", aggfunc="mean")
+    st.subheader("Public accuracy by question class")
+    st.bar_chart(accuracy)
+    st.dataframe(current[["qid", "qtype", "mode", "normalized", "tokens_total", "latency_ms", "cert_check", "selected_tool", "planner_status"]])
 
 rows = load_rows()
 if not rows:
@@ -22,7 +59,9 @@ if not rows:
 df = pd.DataFrame(rows)
 summary = summarize(rows)
 
-st.header("Accuracy by question type")
+st.header("Historical September three-pipeline comparison")
+st.caption("The RAG and GraphRAG files predate the Event parser and graph refresh; do not compare them directly with the current planner run.")
+st.subheader("Accuracy by question type")
 acc = df[df["normalized"].notna()].groupby(["qtype", "pipeline"])["normalized"].mean().unstack()
 st.bar_chart(acc)
 

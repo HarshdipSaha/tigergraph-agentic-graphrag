@@ -1,23 +1,21 @@
 flowchart LR
-    Q[Question] --> R[Router: 5 Regex Templates]
-    R -->|matched| C{Completeness Class}
-    R -->|non-template| J1[Jev System One: Intent Router]
-    J1 -->|classified| C
-    J1 -->|unclassified| F[GraphRAG fallback]
-
-    C -->|existential| T1[exact match / venue+date traversal]
-    C -->|chained| T2[PREV hop chain]
-    C -->|exhaustive| T3[GSQL structural scan: COUNT + all events]
-
-    T1 & T2 & T3 --> E[Evidence evaluator]
-    E -->|complete| A[Answer + Certificate]
-    E -->|ambiguous tie| J2[Jev System One: Typed Disambiguation]
-    J2 -->|resolved| A
-    J2 -->|gap/fallback| L[LLM: disambiguate / extract] --> A
-
-    subgraph TigerGraph Savanna
-        G[(Event / Games / Venue / Athlete graph)]
-        V[(Chunk vectors)]
-    end
-    T1 & T2 & T3 --> G
-    F --> V
+    Q[Question] --> P[LLM planner: choose tool and arguments]
+    P --> V{Schema and question grounding valid?}
+    V -->|yes| X[Deterministic tool executor]
+    V -->|planner failure; recognized template| F[Recorded template fallback]
+    F --> X
+    V -->|unknown question; non-provider failure| R[GraphRAG fallback]
+    V -->|provider failure| U[Unverified result; no extra model call]
+    X --> T1[lookup_nations]
+    X --> T2[resolve_multi_hop]
+    X --> T3[temporal_chain]
+    X --> T4[aggregation_scan]
+    X --> T5[superlative_scan]
+    T1 & T2 & T3 & T4 & T5 --> G[(TigerGraph Event graph)]
+    G --> E[Evidence and certificate evaluator]
+    E -->|unique supported result| A[Canonical answer plus certificate]
+    E -->|question supports sport refinement| O[Sanitized candidate observation]
+    O --> P
+    E -->|unresolved tie or incomplete evidence| U
+    R --> VEC[(Chunk vectors)]
+    VEC --> U

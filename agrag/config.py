@@ -27,8 +27,7 @@ class Settings:
 
     @property
     def groq_api_keys(self) -> list[str]:
-        """GROQ_API_KEY may hold several comma-separated keys (from separate free-tier accounts) so
-        GroqLLM can rotate off a key that hits its daily cap instead of blocking the whole run."""
+        """GROQ_API_KEY may hold comma-separated keys for project-level failover within one organization."""
         return [k.strip() for k in self.groq_api_key.split(",") if k.strip()]
 
 
