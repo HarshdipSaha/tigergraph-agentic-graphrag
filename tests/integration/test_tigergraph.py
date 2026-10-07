@@ -36,9 +36,9 @@ def test_vector_search_returns_k(tg):
 
 
 def test_neighborhood_and_prev_event_return_none_for_non_event_doc(tg):
-    """Q1183979 is a distractor Document (not an Event) that a real vector_search on a hidden question
-    surfaced as a top-3 hit — TigerGraph rejects it as a VERTEX<Event> param with 'Failed to convert
-    user vertex id', which must be caught and turned into None (matching LocalBackend's contract),
-    not left to crash the caller."""
-    assert tg.neighborhood("Q1183979") is None
-    assert tg.prev_event("Q1183979") is None
+    """Q1520721 is a film Document with no Event vertex. Passing it to the installed
+    Event queries must match LocalBackend's contract and return None instead of raising
+    TigerGraph's "Failed to convert user vertex id" exception. The former fixture,
+    Q1183979, is now correctly parsed as an Olympic Event after the infobox repair."""
+    assert tg.neighborhood("Q1520721") is None
+    assert tg.prev_event("Q1520721") is None

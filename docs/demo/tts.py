@@ -1,13 +1,15 @@
 """Generate narration WAV files via Windows SAPI (offline, no API keys, no network)."""
+from pathlib import Path
+
 import win32com.client
 
 SCENES = {
     "scene1": "Investigation Certificates for Agentic GraphRAG. Built for the TigerGraph Agentic GraphRAG Hackathon.",
     "scene2": "Every answer here ships a certificate. Proof, straight from the graph's own structure, that the evidence is as complete as the question needs. Not just that the answer looks right.",
-    "scene3": "On one hundred real questions against a live TigerGraph database: plain RAG scored twenty five percent. GraphRAG, forty three. Our agentic pipeline: ninety nine percent, at forty two tokens per answer.",
-    "scene4": "Here's why. Some questions need every matching event, up to forty three documents. No top-k search can retrieve that many. Both baselines score zero. Our pipeline runs a deterministic count on the graph instead, and gets every one right, for free.",
-    "scene5": "And when the agent does need the language model, say, to break a tie, the certificate says so honestly, instead of hiding it.",
-    "scene6": "Sixty five tests. Reconciled against the live graph. Open source on GitHub. Investigation Certificates for Agentic GraphRAG.",
+    "scene3": "On the same one hundred public questions and refreshed TigerGraph graph, template routing matched ninety nine answers. The LLM planner matched ninety eight. The planner chose a graph tool for eighty six questions.",
+    "scene4": "The planner asks the model to choose a typed tool and arguments. Python validates the action, runs the graph query, and checks the returned evidence. Exhaustive aggregation and superlative results matched all thirty one public answers.",
+    "scene5": "ExCeL on 30 July has three exact-date Events, across fencing and judo. The question gives no sport, so the planner returns no answer and the certificate says unverified. It does not treat a model guess as proof.",
+    "scene6": "The refreshed graph contains two thousand one hundred eighty seven Event records, matching the parsed corpus. Eval zero zero one now resolves to the exact tennis Event. The offline suite contains one hundred twenty passing tests; the report records the live integration result separately.",
 }
 
 speaker = win32com.client.Dispatch("SAPI.SpVoice")
@@ -22,10 +24,11 @@ SSFMCreateForWrite = 3
 SAFT44kHz16BitStereo = 39
 
 for name, text in SCENES.items():
-    out = f"H:/augsepthacks/tigergraph-hack/docs/demo/audio/{name}.wav"
+    out = Path(__file__).parent / "audio" / f"{name}.wav"
+    out.parent.mkdir(parents=True, exist_ok=True)
     file_stream.Format.Type = SAFT44kHz16BitStereo
-    file_stream.Open(out, SSFMCreateForWrite, False)
+    file_stream.Open(str(out), SSFMCreateForWrite, False)
     speaker.AudioOutputStream = file_stream
     speaker.Speak(text)
     file_stream.Close()
-    print("wrote", out)
+    print("wrote", out.name)
